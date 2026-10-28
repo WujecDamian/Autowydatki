@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  passwordHash String         @map("password_hash")
+  cars         Car[]
+  fuelEntries  FuelEntry[]
+  services     ServiceEntry[]
+
+  @@map("users")
+}
+
+model Car {
+  id            Int            @id @default(autoincrement())
+  userId        Int            @map("user_id")
+  name          String
+  purchasePrice Decimal?       @map("purchase_price") @db.Decimal(12, 2)
+  user          User           @relation(fields: [userId], references: [id])
+  fuelEntries   FuelEntry[]
+  services      ServiceEntry[]
+
+  @@map("cars")
+}
+
+model FuelEntry {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  carId      Int      @map("car_id")
+  entryDate  DateTime @map("entry_date") @db.Date
+  odometerKm Int      @map("odometer_km")
+  liters     Decimal  @db.Decimal(8, 2)
+  totalCost  Decimal  @map("total_cost") @db.Decimal(10, 2)
+  user       User     @relation(fields: [userId], references: [id])
+  car        Car      @relation(fields: [carId], references: [id])
+
+  @@map("fuel_entries")
+}
+
+model ServiceEntry {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  carId      Int      @map("car_id")
+  entryDate  DateTime @map("entry_date") @db.Date
+  odometerKm Int      @map("odometer_km")
+  title      String
+  cost       Decimal  @db.Decimal(10, 2)
+  user       User     @relation(fields: [userId], references: [id])
+  car        Car      @relation(fields: [carId], references: [id])
+
+  @@map("service_entries")
+}

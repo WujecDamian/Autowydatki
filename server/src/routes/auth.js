@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { pool } from "../db.js";
+import { prisma } from "../db.js";
 
 export const authRouter = Router();
 
@@ -15,12 +15,8 @@ authRouter.post("/login", async (req, res) => {
       return;
     }
 
-    const result = await pool.query(
-      "SELECT id, email, password_hash FROM users WHERE email = $1",
-      [email],
-    );
-    const user = result.rows[0];
-    const passwordMatches = user ? await bcrypt.compare(password, user.password_hash) : false;
+    const user = await prisma.user.findUnique({ where: { email } });
+    const passwordMatches = user ? await bcrypt.compare(password, user.passwordHash) : false;
 
     if (!passwordMatches) {
       res.status(401).json({ message: "Nieprawidłowy email lub hasło." });

@@ -13,7 +13,7 @@ createdb autowydatki
 ```
 
 2. Skopiuj `server/.env.example` do `server/.env`.
-3. W katalogu `server` uruchom `npm install`, a potem `npm run dev`.
+3. W katalogu `server` uruchom `npm install`, a potem `npm run dev` (przy starcie stosuje migracje Prisma). Schemat zmienia się w `server/prisma/schema.prisma` poleceniem `npm run db:migrate`.
 4. W katalogu `client` uruchom `npm install`, a potem `npm run dev`.
 5. Otwórz http://localhost:5173.
 
@@ -23,7 +23,7 @@ Test obliczeń spalania: w katalogu `client` uruchom `npm test`.
 
 Baza: Supabase, API: Render, frontend: Cloudflare Pages.
 
-1. **Supabase** – utwórz projekt i skopiuj connection string (Session pooler) z *Project Settings → Database*. Tabele tworzą się automatycznie przy starcie API.
+1. **Supabase** – utwórz projekt i skopiuj connection string (Session pooler) z *Project Settings → Database*. Tabele tworzą się automatycznie przy starcie API (`prisma migrate deploy` w `npm start`), a konto administratora zakłada się po migracji.
 2. **Render** – Web Service z katalogu `server` (Build: `npm install`, Start: `npm start`, Health check: `/health`). Zmienne środowiskowe (wzór w `server/.env.example`):
    - `DATABASE_URL` – connection string z Supabase (bez `DATABASE_SSL`)
    - `JWT_SECRET` – długi losowy sekret

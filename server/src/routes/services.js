@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool } from "../db.js";
+import { fromDateString, prisma, toDateString } from "../db.js";
 import { requireLogin } from "../passport.js";
 import { findOwnedCar } from "./cars.js";
 
@@ -19,6 +19,16 @@ const isRealDate = (value) => {
     date.getUTCDate() === day
   );
 };
+
+const serviceFields = {
+  id: true,
+  entryDate: true,
+  odometerKm: true,
+  title: true,
+  cost: true,
+};
+
+const serializeServiceEntry = (entry) => ({ ...entry, entryDate: toDateString(entry.entryDate) });
 
 const isBlank = (value) => value === undefined || value === null || value === "";
 
@@ -60,19 +70,13 @@ servicesRouter.get("/", requireLogin, async (req, res) => {
       return;
     }
 
-    const result = await pool.query(
-      `SELECT id,
-              entry_date AS "entryDate",
-              odometer_km AS "odometerKm",
-              title,
-              cost
-       FROM service_entries
-       WHERE user_id = $1 AND car_id = $2
-       ORDER BY entry_date DESC, id DESC`,
-      [req.user.id, car.id],
-    );
+    const entries = await prisma.serviceEntry.findMany({
+      where: { userId: req.user.id, carId: car.id },
+      select: serviceFields,
+      orderBy: [{ entryDate: "desc" }, { id: "desc" }],
+    });
 
-    res.json(result.rows);
+    res.json(entries.map(serializeServiceEntry));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Nie udało się pobrać serwisów." });
@@ -95,18 +99,19 @@ servicesRouter.post("/", requireLogin, async (req, res) => {
       return;
     }
 
-    const result = await pool.query(
-      `INSERT INTO service_entries (user_id, car_id, entry_date, odometer_km, title, cost)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id,
-                 entry_date AS "entryDate",
-                 odometer_km AS "odometerKm",
-                 title,
-                 cost`,
-      [req.user.id, car.id, service.entryDate, service.odometerKm, service.title, service.cost],
-    );
+    const created = await prisma.serviceEntry.create({
+      data: {
+        userId: req.user.id,
+        carId: car.id,
+        entryDate: fromDateString(service.entryDate),
+        odometerKm: service.odometerKm,
+        title: service.title,
+        cost: service.cost,
+      },
+      select: serviceFields,
+    });
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(serializeServiceEntry(created));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Nie udało się zapisać serwisu." });
@@ -122,12 +127,9 @@ servicesRouter.delete("/:id", requireLogin, async (req, res) => {
       return;
     }
 
-    const result = await pool.query(
-      "DELETE FROM service_entries WHERE id = $1 AND user_id = $2",
-      [id, req.user.id],
-    );
+    const result = await prisma.serviceEntry.deleteMany({ where: { id, userId: req.user.id } });
 
-    if (result.rowCount === 0) {
+    if (result.count === 0) {
       res.status(404).json({ message: "Nie znaleziono serwisu." });
       return;
     }

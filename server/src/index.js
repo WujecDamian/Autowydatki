@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import passport from "passport";
-import { initDatabase } from "./db.js";
+import { ensureAdminUser } from "./db.js";
 import "./passport.js";
 import { authRouter } from "./routes/auth.js";
 import { carsRouter } from "./routes/cars.js";
@@ -31,7 +31,7 @@ app.use("/api/services", servicesRouter);
 
 const port = Number(process.env.PORT) || 3001;
 
-initDatabase()
+ensureAdminUser()
   .then(() => {
     app.listen(port, () => {
       console.log(`API listening on ${port}`);
