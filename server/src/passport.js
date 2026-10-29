@@ -1,6 +1,6 @@
 import passport from "passport";
 import { ExtractJwt, Strategy as JwtStrategy } from "passport-jwt";
-import { pool } from "./db.js";
+import { prisma } from "./db.js";
 
 passport.use(
   new JwtStrategy(
@@ -10,10 +10,10 @@ passport.use(
     },
     async (payload, done) => {
       try {
-        const result = await pool.query("SELECT id, email FROM users WHERE id = $1", [
-          payload.id,
-        ]);
-        const user = result.rows[0];
+        const user = await prisma.user.findUnique({
+          where: { id: payload.id },
+          select: { id: true, email: true },
+        });
 
         if (!user) {
           done(null, false);

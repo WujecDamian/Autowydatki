@@ -16,7 +16,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Car", "Fuel", "Service"],
+  tagTypes: ["Car", "Fuel", "Service", "Station", "Photo", "Note"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (body) => ({
@@ -24,6 +24,16 @@ export const api = createApi({
         method: "POST",
         body,
       }),
+    }),
+    googleLogin: builder.mutation({
+      query: (credential) => ({
+        url: "/auth/google",
+        method: "POST",
+        body: { credential },
+      }),
+    }),
+    getMe: builder.query({
+      query: () => "/me",
     }),
     getCars: builder.query({
       query: () => "/cars",
@@ -42,13 +52,68 @@ export const api = createApi({
       }),
       invalidatesTags: ["Car"],
     }),
-    updateCarPrice: builder.mutation({
-      query: ({ id, purchasePrice }) => ({
+    updateCar: builder.mutation({
+      query: ({ id, ...changes }) => ({
         url: `/cars/${id}`,
         method: "PATCH",
-        body: { purchasePrice },
+        body: changes,
       }),
       invalidatesTags: ["Car"],
+    }),
+    deleteCar: builder.mutation({
+      query: (id) => ({
+        url: `/cars/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Car", "Fuel", "Service", "Photo", "Note"],
+    }),
+    getNotes: builder.query({
+      query: (carId) => `/notes?carId=${carId}`,
+      providesTags: ["Note"],
+    }),
+    addNote: builder.mutation({
+      query: (body) => ({
+        url: "/notes",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Note"],
+    }),
+    updateNote: builder.mutation({
+      query: ({ id, ...changes }) => ({
+        url: `/notes/${id}`,
+        method: "PATCH",
+        body: changes,
+      }),
+      invalidatesTags: ["Note"],
+    }),
+    deleteNote: builder.mutation({
+      query: (id) => ({
+        url: `/notes/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Note"],
+    }),
+    getPhotos: builder.query({
+      query: (carId) => `/cars/${carId}/photos`,
+      providesTags: ["Photo"],
+    }),
+    uploadPhoto: builder.mutation({
+      query: ({ carId, file }) => {
+        const body = new FormData();
+        body.append("photo", file);
+
+        return { url: `/cars/${carId}/photos`, method: "POST", body };
+      },
+      // The first photo becomes the car's cover.
+      invalidatesTags: ["Photo", "Car"],
+    }),
+    deletePhoto: builder.mutation({
+      query: (id) => ({
+        url: `/photos/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Photo", "Car"],
     }),
     getFuel: builder.query({
       query: (carId) => `/fuel?carId=${carId}`,
@@ -76,6 +141,26 @@ export const api = createApi({
       }),
       invalidatesTags: ["Fuel"],
     }),
+    getStations: builder.query({
+      query: () => "/stations",
+      providesTags: ["Station"],
+    }),
+    addStation: builder.mutation({
+      query: (name) => ({
+        url: "/stations",
+        method: "POST",
+        body: { name },
+      }),
+      invalidatesTags: ["Station"],
+    }),
+    deleteStation: builder.mutation({
+      query: (id) => ({
+        url: `/stations/${id}`,
+        method: "DELETE",
+      }),
+      // Fuel entries lose the deleted station's name, so they are refetched too.
+      invalidatesTags: ["Station", "Fuel"],
+    }),
     getServices: builder.query({
       query: (carId) => `/services?carId=${carId}`,
       transformResponse: (entries) =>
@@ -83,6 +168,7 @@ export const api = createApi({
           ...entry,
           odometerKm: Number(entry.odometerKm),
           cost: Number(entry.cost),
+          items: entry.items.map((item) => ({ ...item, cost: Number(item.cost) })),
         })),
       providesTags: ["Service"],
     }),
@@ -92,7 +178,15 @@ export const api = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Service"],
+      invalidatesTags: ["Service", "Car"],
+    }),
+    updateService: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/services/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Service", "Car"],
     }),
     deleteService: builder.mutation({
       query: (id) => ({
@@ -106,13 +200,27 @@ export const api = createApi({
 
 export const {
   useLoginMutation,
+  useGoogleLoginMutation,
+  useGetMeQuery,
   useGetCarsQuery,
   useAddCarMutation,
-  useUpdateCarPriceMutation,
+  useUpdateCarMutation,
+  useDeleteCarMutation,
+  useGetNotesQuery,
+  useAddNoteMutation,
+  useUpdateNoteMutation,
+  useDeleteNoteMutation,
+  useGetPhotosQuery,
+  useUploadPhotoMutation,
+  useDeletePhotoMutation,
   useGetFuelQuery,
   useAddFuelMutation,
   useDeleteFuelMutation,
+  useGetStationsQuery,
+  useAddStationMutation,
+  useDeleteStationMutation,
   useGetServicesQuery,
   useAddServiceMutation,
+  useUpdateServiceMutation,
   useDeleteServiceMutation,
 } = api;

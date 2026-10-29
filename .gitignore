@@ -147,3 +147,12 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Generated Prisma client
+server/src/generated/
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Local photo uploads (used when Supabase Storage is not configured)
+server/uploads/

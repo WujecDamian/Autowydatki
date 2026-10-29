@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  passwordHash String?        @map("password_hash")
+  googleId     String?        @unique @map("google_id")
+  name         String?
+  avatarUrl    String?        @map("avatar_url")
+  cars         Car[]
+  fuelEntries  FuelEntry[]
+  services     ServiceEntry[]
+  fuelStations FuelStation[]
+  carPhotos    CarPhoto[]
+  notes        Note[]
+
+  @@map("users")
+}
+
+model Car {
+  id                   Int            @id @default(autoincrement())
+  userId               Int            @map("user_id")
+  name                 String
+  purchasePrice        Decimal?       @map("purchase_price") @db.Decimal(12, 2)
+  inspectionValidUntil DateTime?      @map("inspection_valid_until") @db.Date
+  ocValidUntil         DateTime?      @map("oc_valid_until") @db.Date
+  acValidUntil         DateTime?      @map("ac_valid_until") @db.Date
+  coverPhotoId         Int?           @unique @map("cover_photo_id")
+  coverPhoto           CarPhoto?      @relation("CarCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
+  photos               CarPhoto[]     @relation("CarPhotos")
+  notes                Note[]
+  user                 User           @relation(fields: [userId], references: [id])
+  fuelEntries          FuelEntry[]
+  services             ServiceEntry[]
+
+  @@map("cars")
+}
+
+model FuelEntry {
+  id         Int          @id @default(autoincrement())
+  userId     Int          @map("user_id")
+  carId      Int          @map("car_id")
+  entryDate  DateTime     @map("entry_date") @db.Date
+  odometerKm Int          @map("odometer_km")
+  liters     Decimal      @db.Decimal(8, 2)
+  totalCost  Decimal      @map("total_cost") @db.Decimal(10, 2)
+  stationId  Int?         @map("station_id")
+  user       User         @relation(fields: [userId], references: [id])
+  car        Car          @relation(fields: [carId], references: [id], onDelete: Cascade)
+  station    FuelStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
+
+  @@map("fuel_entries")
+}
+
+// Rows without a user are the built-in Polish brands seeded by the migration.
+model FuelStation {
+  id          Int         @id @default(autoincrement())
+  userId      Int?        @map("user_id")
+  name        String
+  user        User?       @relation(fields: [userId], references: [id])
+  fuelEntries FuelEntry[]
+
+  @@index([userId])
+  @@map("fuel_stations")
+}
+
+enum ServiceKind {
+  REPAIR
+  INSPECTION
+}
+
+// The entry's cost is the sum of its items.
+model ServiceEntry {
+  id         Int           @id @default(autoincrement())
+  userId     Int           @map("user_id")
+  carId      Int           @map("car_id")
+  kind       ServiceKind   @default(REPAIR)
+  entryDate  DateTime      @map("entry_date") @db.Date
+  odometerKm Int           @map("odometer_km")
+  title      String?
+  user       User          @relation(fields: [userId], references: [id])
+  car        Car           @relation(fields: [carId], references: [id], onDelete: Cascade)
+  items      ServiceItem[]
+
+  @@map("service_entries")
+}
+
+model ServiceItem {
+  id             Int          @id @default(autoincrement())
+  serviceEntryId Int          @map("service_entry_id")
+  category       String
+  name           String
+  cost           Decimal      @db.Decimal(10, 2)
+  serviceEntry   ServiceEntry @relation(fields: [serviceEntryId], references: [id], onDelete: Cascade)
+
+  @@index([serviceEntryId])
+  @@map("service_items")
+}
+
+// Files live in storage (Supabase or server/uploads); storagePath points at the full-size image.
+model CarPhoto {
+  id          Int      @id @default(autoincrement())
+  carId       Int      @map("car_id")
+  userId      Int      @map("user_id")
+  storagePath String   @map("storage_path")
+  createdAt   DateTime @default(now()) @map("created_at")
+  car         Car      @relation("CarPhotos", fields: [carId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  coverOf     Car?     @relation("CarCover")
+
+  @@index([carId])
+  @@map("car_photos")
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  carId     Int      @map("car_id")
+  userId    Int      @map("user_id")
+  body      String   @db.Text
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([carId])
+  @@map("notes")
+}

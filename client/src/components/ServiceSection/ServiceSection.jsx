@@ -1,172 +1,116 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  useAddServiceMutation,
-  useDeleteServiceMutation,
-  useGetServicesQuery,
-} from "../../app/api.js";
+import { useOutletContext } from "react-router";
+import { Badge } from "@/components/ui/badge";
+import { useDeleteServiceMutation, useGetServicesQuery } from "../../app/api.js";
+import { formatDate, kilometers, money } from "../../lib/format.js";
+import { AddButton } from "../AddButton/AddButton.jsx";
+import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
+import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
+import { PageHeader } from "../PageHeader/PageHeader.jsx";
+import { ServiceForm } from "../ServiceForm/ServiceForm.jsx";
 
-const money = new Intl.NumberFormat("pl-PL", {
-  style: "currency",
-  currency: "PLN",
-});
+const entryTitle = (entry) => {
+  if (entry.title) {
+    return entry.title;
+  }
 
-const formatDate = (value) => {
-  const [year, month, day] = value.split("-");
-  return `${day}.${month}.${year}`;
+  if (entry.kind === "INSPECTION") {
+    return "Badanie techniczne";
+  }
+
+  return entry.items.length === 1 ? entry.items[0].name : "Naprawa";
 };
 
-const emptyForm = {
-  title: "",
-  entryDate: "",
-  odometerKm: "",
-  cost: "",
+const itemSummary = (items) => {
+  const names = items.slice(0, 3).map((item) => item.name);
+  const rest = items.length - names.length;
+
+  return rest > 0 ? `${names.join(", ")} +${rest}` : names.join(", ");
 };
 
-export const ServiceSection = ({ carId }) => {
-  const serviceQuery = useGetServicesQuery(carId);
-  const [form, setForm] = useState(emptyForm);
-  const [addService, addState] = useAddServiceMutation();
+export const ServiceSection = () => {
+  const { car } = useOutletContext();
+  const serviceQuery = useGetServicesQuery(car.id);
   const [deleteService, deleteState] = useDeleteServiceMutation();
+  // null: drawer closed, { entry: null }: new entry, { entry }: editing that entry.
+  const [editing, setEditing] = useState(null);
   const services = serviceQuery.data ?? [];
-  const errorMessage =
-    addState.error?.data?.message || (addState.error ? "Nie udało się zapisać serwisu." : "");
-
-  const onChange = (event) => {
-    setForm((current) => ({
-      ...current,
-      [event.target.name]: event.target.value,
-    }));
-  };
-
-  const onSubmit = async (event) => {
-    event.preventDefault();
-
-    try {
-      await addService({
-        carId,
-        title: form.title,
-        entryDate: form.entryDate,
-        odometerKm: Number(form.odometerKm),
-        cost: Number(form.cost),
-      }).unwrap();
-      setForm(emptyForm);
-    } catch {
-      // The error message is rendered from the mutation result.
-    }
-  };
 
   return (
     <section className="grid gap-4">
-      <h2 className="text-lg font-semibold">Serwis</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Nowa wizyta</CardTitle>
-          <CardDescription>Na przykład olej, opony albo przegląd.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="service-title">Nazwa</Label>
-              <Input
-                id="service-title"
-                name="title"
-                value={form.title}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="service-date">Data</Label>
-              <Input
-                id="service-date"
-                name="entryDate"
-                type="date"
-                value={form.entryDate}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="service-odometer">Przebieg (km)</Label>
-              <Input
-                id="service-odometer"
-                name="odometerKm"
-                type="number"
-                min="0"
-                step="1"
-                value={form.odometerKm}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="service-cost">Koszt (zł)</Label>
-              <Input
-                id="service-cost"
-                name="cost"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.cost}
-                onChange={onChange}
-                required
-              />
-            </div>
-            {errorMessage ? (
-              <p role="alert" className="text-sm text-destructive sm:col-span-2">
-                {errorMessage}
-              </p>
-            ) : null}
-            <Button type="submit" className="sm:col-span-2" disabled={addState.isLoading}>
-              {addState.isLoading ? "Zapisywanie..." : "Dodaj serwis"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-      {serviceQuery.isLoading ? <p>Wczytywanie serwisów...</p> : null}
+      <PageHeader title="Serwis" description="Naprawy i badania techniczne." />
+      {serviceQuery.isLoading ? (
+        <p className="text-muted-foreground">Wczytywanie serwisów...</p>
+      ) : null}
       {serviceQuery.isError ? (
         <p role="alert" className="text-sm text-destructive">
           Nie udało się wczytać serwisów.
         </p>
       ) : null}
       {!serviceQuery.isLoading && !serviceQuery.isError && services.length === 0 ? (
-        <p>Brak serwisów.</p>
+        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          Brak wpisów. Dodaj pierwszą naprawę albo badanie przyciskiem +.
+        </p>
       ) : null}
-      {services.map((entry) => (
-        <Card key={entry.id}>
-          <CardHeader>
-            <CardTitle>{entry.title}</CardTitle>
-            <CardDescription>
-              {formatDate(entry.entryDate)} · {entry.odometerKm} km
-            </CardDescription>
-            <CardAction>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => deleteService(entry.id)}
+      <ul className="grid gap-3">
+        {services.map((entry) => (
+          <li key={entry.id} className="flex items-start gap-1 rounded-2xl border bg-card p-1">
+            <button
+              type="button"
+              onClick={() => setEditing({ entry })}
+              className="grid min-w-0 flex-1 gap-2 rounded-xl p-3 text-left transition-colors hover:bg-accent/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="grid min-w-0 gap-1">
+                  <Badge
+                    variant={entry.kind === "INSPECTION" ? "default" : "secondary"}
+                    className="w-fit"
+                  >
+                    {entry.kind === "INSPECTION" ? "Badanie techniczne" : "Naprawa"}
+                  </Badge>
+                  <p className="truncate font-medium">{entryTitle(entry)}</p>
+                </div>
+                <p className="shrink-0 font-heading text-lg font-semibold">
+                  {money.format(entry.cost)}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatDate(entry.entryDate)} · {kilometers.format(entry.odometerKm)} km
+              </p>
+              <p className="line-clamp-2 text-xs text-muted-foreground">
+                {itemSummary(entry.items)}
+              </p>
+            </button>
+            <div className="pt-2 pr-1">
+              <ConfirmDelete
+                title="Usunąć wpis?"
+                description={`„${entryTitle(entry)}” z ${formatDate(entry.entryDate)} zostanie usunięty razem z pozycjami.`}
+                onConfirm={() => deleteService(entry.id)}
                 disabled={deleteState.isLoading}
-              >
-                Usuń
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">{money.format(entry.cost)}</p>
-          </CardContent>
-        </Card>
-      ))}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <AddButton label="Dodaj wpis serwisowy" onClick={() => setEditing({ entry: null })} />
+      <FormDrawer
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(null);
+          }
+        }}
+        title={editing?.entry ? "Edytuj wpis" : "Nowy wpis serwisowy"}
+      >
+        {editing ? (
+          <ServiceForm
+            key={editing.entry?.id ?? "new"}
+            carId={car.id}
+            entry={editing.entry}
+            onSaved={() => setEditing(null)}
+          />
+        ) : null}
+      </FormDrawer>
     </section>
   );
 };

@@ -1,26 +1,22 @@
 import { Router } from "express";
-import { pool } from "../db.js";
+import { fromDateString, prisma, toDateString } from "../db.js";
 import { requireLogin } from "../passport.js";
+import { isBlank, isRealDate } from "../validation.js";
 import { findOwnedCar } from "./cars.js";
+import { findUsableStation } from "./stations.js";
 
 export const fuelRouter = Router();
 
-const isRealDate = (value) => {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
+const fuelFields = {
+  id: true,
+  entryDate: true,
+  odometerKm: true,
+  liters: true,
+  totalCost: true,
+  station: { select: { id: true, name: true } },
 };
 
-const isBlank = (value) => value === undefined || value === null || value === "";
+const serializeFuelEntry = (entry) => ({ ...entry, entryDate: toDateString(entry.entryDate) });
 
 const readFuelBody = (body) => {
   if (!isRealDate(body.entryDate)) {
@@ -59,19 +55,13 @@ fuelRouter.get("/", requireLogin, async (req, res) => {
       return;
     }
 
-    const result = await pool.query(
-      `SELECT id,
-              entry_date AS "entryDate",
-              odometer_km AS "odometerKm",
-              liters,
-              total_cost AS "totalCost"
-       FROM fuel_entries
-       WHERE user_id = $1 AND car_id = $2
-       ORDER BY entry_date DESC, id DESC`,
-      [req.user.id, car.id],
-    );
+    const entries = await prisma.fuelEntry.findMany({
+      where: { userId: req.user.id, carId: car.id },
+      select: fuelFields,
+      orderBy: [{ entryDate: "desc" }, { id: "desc" }],
+    });
 
-    res.json(result.rows);
+    res.json(entries.map(serializeFuelEntry));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Nie udało się pobrać tankowań." });
@@ -94,18 +84,33 @@ fuelRouter.post("/", requireLogin, async (req, res) => {
       return;
     }
 
-    const result = await pool.query(
-      `INSERT INTO fuel_entries (user_id, car_id, entry_date, odometer_km, liters, total_cost)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id,
-                 entry_date AS "entryDate",
-                 odometer_km AS "odometerKm",
-                 liters,
-                 total_cost AS "totalCost"`,
-      [req.user.id, car.id, fuel.entryDate, fuel.odometerKm, fuel.liters, fuel.totalCost],
-    );
+    let stationId = null;
 
-    res.status(201).json(result.rows[0]);
+    if (!isBlank(req.body?.stationId)) {
+      const station = await findUsableStation(req.user.id, req.body.stationId);
+
+      if (!station) {
+        res.status(400).json({ message: "Nie znaleziono stacji." });
+        return;
+      }
+
+      stationId = station.id;
+    }
+
+    const created = await prisma.fuelEntry.create({
+      data: {
+        userId: req.user.id,
+        carId: car.id,
+        entryDate: fromDateString(fuel.entryDate),
+        odometerKm: fuel.odometerKm,
+        liters: fuel.liters,
+        totalCost: fuel.totalCost,
+        stationId,
+      },
+      select: fuelFields,
+    });
+
+    res.status(201).json(serializeFuelEntry(created));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Nie udało się zapisać tankowania." });
@@ -121,12 +126,9 @@ fuelRouter.delete("/:id", requireLogin, async (req, res) => {
       return;
     }
 
-    const result = await pool.query("DELETE FROM fuel_entries WHERE id = $1 AND user_id = $2", [
-      id,
-      req.user.id,
-    ]);
+    const result = await prisma.fuelEntry.deleteMany({ where: { id, userId: req.user.id } });
 
-    if (result.rowCount === 0) {
+    if (result.count === 0) {
       res.status(404).json({ message: "Nie znaleziono tankowania." });
       return;
     }

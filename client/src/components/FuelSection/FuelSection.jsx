@@ -1,59 +1,36 @@
 import { useState } from "react";
+import { useOutletContext } from "react-router";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAddFuelMutation, useDeleteFuelMutation, useGetFuelQuery } from "../../app/api.js";
 import { getSummary } from "../../calculations.js";
+import {
+  consumption,
+  errorText,
+  formatDate,
+  kilometers,
+  litersFormat,
+  money,
+  todayString,
+} from "../../lib/format.js";
+import { AddButton } from "../AddButton/AddButton.jsx";
+import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
+import { Field } from "../Field/Field.jsx";
+import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
+import { PageHeader } from "../PageHeader/PageHeader.jsx";
+import { StationPicker } from "../StationPicker/StationPicker.jsx";
 
-const money = new Intl.NumberFormat("pl-PL", {
-  style: "currency",
-  currency: "PLN",
-});
-
-const litersFormat = new Intl.NumberFormat("pl-PL", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const consumption = new Intl.NumberFormat("pl-PL", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
-const formatDate = (value) => {
-  const [year, month, day] = value.split("-");
-  return `${day}.${month}.${year}`;
-};
-
-const emptyForm = {
-  entryDate: "",
+const emptyForm = () => ({
+  entryDate: todayString(),
   odometerKm: "",
   liters: "",
   totalCost: "",
-};
+});
 
-export const FuelSection = ({ carId }) => {
-  const fuelQuery = useGetFuelQuery(carId);
+const FuelForm = ({ carId, defaultStationId, onSaved }) => {
   const [form, setForm] = useState(emptyForm);
+  const [stationId, setStationId] = useState(defaultStationId);
   const [addFuel, addState] = useAddFuelMutation();
-  const [deleteFuel, deleteState] = useDeleteFuelMutation();
-  const fuel = fuelQuery.data ?? [];
-  const usageById = {};
-
-  for (const item of getSummary(fuel, []).perFill) {
-    usageById[item.id] = item.litersPer100km;
-  }
-
-  const errorMessage =
-    addState.error?.data?.message || (addState.error ? "Nie udało się zapisać tankowania." : "");
+  const errorMessage = errorText(addState.error, "Nie udało się zapisać tankowania.");
 
   const onChange = (event) => {
     setForm((current) => ({
@@ -72,127 +49,160 @@ export const FuelSection = ({ carId }) => {
         odometerKm: Number(form.odometerKm),
         liters: Number(form.liters),
         totalCost: Number(form.totalCost),
+        stationId,
       }).unwrap();
-      setForm(emptyForm);
+      setForm(emptyForm());
+      onSaved();
     } catch {
       // The error message is rendered from the mutation result.
     }
   };
 
   return (
+    <form className="grid grid-cols-2 gap-4" onSubmit={onSubmit}>
+      <div className="col-span-2">
+        <StationPicker value={stationId} onChange={setStationId} />
+      </div>
+      <Field
+        id="fuel-date"
+        label="Data"
+        name="entryDate"
+        type="date"
+        value={form.entryDate}
+        onChange={onChange}
+        required
+      />
+      <Field
+        id="fuel-odometer"
+        label="Przebieg (km)"
+        name="odometerKm"
+        type="number"
+        inputMode="numeric"
+        min="0"
+        step="1"
+        value={form.odometerKm}
+        onChange={onChange}
+        required
+      />
+      <Field
+        id="fuel-liters"
+        label="Litry"
+        name="liters"
+        type="number"
+        inputMode="decimal"
+        min="0.01"
+        step="0.01"
+        value={form.liters}
+        onChange={onChange}
+        required
+      />
+      <Field
+        id="fuel-cost"
+        label="Koszt (zł)"
+        name="totalCost"
+        type="number"
+        inputMode="decimal"
+        min="0"
+        step="0.01"
+        value={form.totalCost}
+        onChange={onChange}
+        required
+      />
+      {errorMessage ? (
+        <p role="alert" className="col-span-2 text-sm text-destructive">
+          {errorMessage}
+        </p>
+      ) : null}
+      <Button type="submit" size="lg" className="col-span-2" disabled={addState.isLoading}>
+        {addState.isLoading ? "Zapisywanie..." : "Dodaj tankowanie"}
+      </Button>
+    </form>
+  );
+};
+
+export const FuelSection = () => {
+  const { car } = useOutletContext();
+  const fuelQuery = useGetFuelQuery(car.id);
+  const [deleteFuel, deleteState] = useDeleteFuelMutation();
+  const [formOpen, setFormOpen] = useState(false);
+  const fuel = fuelQuery.data ?? [];
+  const usageById = {};
+
+  for (const item of getSummary(fuel, []).perFill) {
+    usageById[item.id] = item.litersPer100km;
+  }
+
+  return (
     <section className="grid gap-4">
-      <h2 className="text-lg font-semibold">Paliwo</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Nowe tankowanie</CardTitle>
-          <CardDescription>Każde tankowanie liczy się jako pełny bak.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
-            <div className="grid gap-2">
-              <Label htmlFor="fuel-date">Data</Label>
-              <Input
-                id="fuel-date"
-                name="entryDate"
-                type="date"
-                value={form.entryDate}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="fuel-odometer">Przebieg (km)</Label>
-              <Input
-                id="fuel-odometer"
-                name="odometerKm"
-                type="number"
-                min="0"
-                step="1"
-                value={form.odometerKm}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="fuel-liters">Litry</Label>
-              <Input
-                id="fuel-liters"
-                name="liters"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={form.liters}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="fuel-cost">Koszt (zł)</Label>
-              <Input
-                id="fuel-cost"
-                name="totalCost"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.totalCost}
-                onChange={onChange}
-                required
-              />
-            </div>
-            {errorMessage ? (
-              <p role="alert" className="text-sm text-destructive sm:col-span-2">
-                {errorMessage}
-              </p>
-            ) : null}
-            <Button type="submit" className="sm:col-span-2" disabled={addState.isLoading}>
-              {addState.isLoading ? "Zapisywanie..." : "Dodaj tankowanie"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-      {fuelQuery.isLoading ? <p>Wczytywanie tankowań...</p> : null}
+      <PageHeader title="Paliwo" description="Każde tankowanie liczy się jako pełny bak." />
+      {fuelQuery.isLoading ? <p className="text-muted-foreground">Wczytywanie tankowań...</p> : null}
       {fuelQuery.isError ? (
         <p role="alert" className="text-sm text-destructive">
           Nie udało się wczytać tankowań.
         </p>
       ) : null}
-      {!fuelQuery.isLoading && !fuelQuery.isError && fuel.length === 0 ? <p>Brak tankowań.</p> : null}
-      {fuel.map((entry) => {
-        const litersPer100km = usageById[entry.id];
-        let usageText = null;
+      {!fuelQuery.isLoading && !fuelQuery.isError && fuel.length === 0 ? (
+        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          Brak tankowań. Dodaj pierwsze przyciskiem +.
+        </p>
+      ) : null}
+      <ul className="grid gap-3">
+        {fuel.map((entry) => {
+          const litersPer100km = usageById[entry.id];
+          let usageText = null;
 
-        if (litersPer100km === null) {
-          usageText = "Przebieg nie jest większy niż poprzedni.";
-        } else if (litersPer100km !== undefined) {
-          usageText = `${consumption.format(litersPer100km)} l/100 km`;
-        }
+          if (litersPer100km === null) {
+            usageText = "Przebieg nie jest większy niż poprzedni.";
+          } else if (litersPer100km !== undefined) {
+            usageText = `${consumption.format(litersPer100km)} l/100 km`;
+          }
 
-        return (
-          <Card key={entry.id}>
-            <CardHeader>
-              <CardTitle>{formatDate(entry.entryDate)}</CardTitle>
-              <CardDescription>{entry.odometerKm} km</CardDescription>
-              <CardAction>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => deleteFuel(entry.id)}
-                  disabled={deleteState.isLoading}
-                >
-                  Usuń
-                </Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-1 text-sm">
-              <p>{litersFormat.format(entry.liters)} l</p>
-              <p>{money.format(entry.totalCost)}</p>
-              <p>Cena za litr: {money.format(entry.totalCost / entry.liters)}</p>
-              {usageText ? <p>{usageText}</p> : null}
-            </CardContent>
-          </Card>
-        );
-      })}
+          return (
+            <li key={entry.id} className="grid gap-2 rounded-2xl border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {entry.station ? entry.station.name : formatDate(entry.entryDate)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {entry.station ? `${formatDate(entry.entryDate)} · ` : ""}
+                    {kilometers.format(entry.odometerKm)} km
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <p className="font-heading text-lg font-semibold">
+                    {money.format(entry.totalCost)}
+                  </p>
+                  <ConfirmDelete
+                    title="Usunąć tankowanie?"
+                    description={`Tankowanie z ${formatDate(entry.entryDate)} zostanie usunięte.`}
+                    onConfirm={() => deleteFuel(entry.id)}
+                    disabled={deleteState.isLoading}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span>{litersFormat.format(entry.liters)} l</span>
+                <span>{money.format(entry.totalCost / entry.liters)}/l</span>
+                {usageText ? (
+                  <span className={litersPer100km === null ? "text-warning" : "text-primary"}>
+                    {usageText}
+                  </span>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <AddButton label="Dodaj tankowanie" onClick={() => setFormOpen(true)} />
+      <FormDrawer open={formOpen} onOpenChange={setFormOpen} title="Nowe tankowanie">
+        {/* The newest entry's station is the default, so regulars tap it only once. */}
+        <FuelForm
+          carId={car.id}
+          defaultStationId={fuel[0]?.station?.id ?? null}
+          onSaved={() => setFormOpen(false)}
+        />
+      </FormDrawer>
     </section>
   );
 };
