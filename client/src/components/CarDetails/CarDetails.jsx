@@ -146,7 +146,7 @@ const DeleteCar = ({ car }) => {
       <div className="grid gap-1">
         <h2 className="font-heading font-semibold">Usuń auto</h2>
         <p className="text-sm text-muted-foreground">
-          Razem z autem znikną wszystkie jego tankowania, wpisy serwisowe i zdjęcia.
+          Razem z autem znikną wszystkie jego tankowania, wpisy serwisowe, zdjęcia i notatki.
         </p>
       </div>
       {errorMessage ? (
@@ -164,7 +164,7 @@ const DeleteCar = ({ car }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Usunąć „{car.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tankowania, wpisy serwisowe i zdjęcia tego auta zostaną usunięte. Tego nie da się cofnąć.
+              Tankowania, wpisy serwisowe, zdjęcia i notatki tego auta zostaną usunięte. Tego nie da się cofnąć.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

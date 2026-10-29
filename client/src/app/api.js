@@ -16,7 +16,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Car", "Fuel", "Service", "Station", "Photo"],
+  tagTypes: ["Car", "Fuel", "Service", "Station", "Photo", "Note"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (body) => ({
@@ -65,7 +65,34 @@ export const api = createApi({
         url: `/cars/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Car", "Fuel", "Service", "Photo"],
+      invalidatesTags: ["Car", "Fuel", "Service", "Photo", "Note"],
+    }),
+    getNotes: builder.query({
+      query: (carId) => `/notes?carId=${carId}`,
+      providesTags: ["Note"],
+    }),
+    addNote: builder.mutation({
+      query: (body) => ({
+        url: "/notes",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Note"],
+    }),
+    updateNote: builder.mutation({
+      query: ({ id, ...changes }) => ({
+        url: `/notes/${id}`,
+        method: "PATCH",
+        body: changes,
+      }),
+      invalidatesTags: ["Note"],
+    }),
+    deleteNote: builder.mutation({
+      query: (id) => ({
+        url: `/notes/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Note"],
     }),
     getPhotos: builder.query({
       query: (carId) => `/cars/${carId}/photos`,
@@ -179,6 +206,10 @@ export const {
   useAddCarMutation,
   useUpdateCarMutation,
   useDeleteCarMutation,
+  useGetNotesQuery,
+  useAddNoteMutation,
+  useUpdateNoteMutation,
+  useDeleteNoteMutation,
   useGetPhotosQuery,
   useUploadPhotoMutation,
   useDeletePhotoMutation,

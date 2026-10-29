@@ -148,7 +148,7 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
   - an upload button using `<input type="file" accept="image/*" multiple>`, so phones offer the camera or gallery, with upload progress
 - README: create the bucket, set the env vars on Render.
 
-## Step 7 — Notes per car
+## Step 7 — Notes per car ✅
 - Schema: `Note { id, carId, userId, body String @db.Text, pinned Boolean @default(false), createdAt, updatedAt }`.
 - Server: `server/src/routes/notes.js` with `GET ?carId`, `POST`, `PATCH /:id` (body/pinned) and `DELETE /:id`. Ownership is checked through the existing `findOwnedCar` (`server/src/routes/cars.js`). Body is 1–5000 characters.
 - Client: the `/notatki` screen lists notes (pinned first, then by `updatedAt` desc) with the first lines visible and a relative date. Tapping a note opens a drawer with a textarea to edit, pin or delete it. The "+" button creates a new note.

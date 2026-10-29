@@ -4,6 +4,7 @@ import { AppLayout } from "./components/AppLayout/AppLayout.jsx";
 import { CarDetails } from "./components/CarDetails/CarDetails.jsx";
 import { FuelSection } from "./components/FuelSection/FuelSection.jsx";
 import { Login } from "./components/Login/Login.jsx";
+import { NotesSection } from "./components/NotesSection/NotesSection.jsx";
 import { ServiceSection } from "./components/ServiceSection/ServiceSection.jsx";
 import { Summary } from "./components/Summary/Summary.jsx";
 
@@ -21,6 +22,7 @@ const App = () => {
           <Route index element={<Summary />} />
           <Route path="paliwo" element={<FuelSection />} />
           <Route path="serwis" element={<ServiceSection />} />
+          <Route path="notatki" element={<NotesSection />} />
           <Route path="auto" element={<CarDetails />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
