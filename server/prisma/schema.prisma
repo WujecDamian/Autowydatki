@@ -23,13 +23,16 @@ model User {
 }
 
 model Car {
-  id            Int            @id @default(autoincrement())
-  userId        Int            @map("user_id")
-  name          String
-  purchasePrice Decimal?       @map("purchase_price") @db.Decimal(12, 2)
-  user          User           @relation(fields: [userId], references: [id])
-  fuelEntries   FuelEntry[]
-  services      ServiceEntry[]
+  id                   Int            @id @default(autoincrement())
+  userId               Int            @map("user_id")
+  name                 String
+  purchasePrice        Decimal?       @map("purchase_price") @db.Decimal(12, 2)
+  inspectionValidUntil DateTime?      @map("inspection_valid_until") @db.Date
+  ocValidUntil         DateTime?      @map("oc_valid_until") @db.Date
+  acValidUntil         DateTime?      @map("ac_valid_until") @db.Date
+  user                 User           @relation(fields: [userId], references: [id])
+  fuelEntries          FuelEntry[]
+  services             ServiceEntry[]
 
   @@map("cars")
 }
@@ -44,7 +47,7 @@ model FuelEntry {
   totalCost  Decimal      @map("total_cost") @db.Decimal(10, 2)
   stationId  Int?         @map("station_id")
   user       User         @relation(fields: [userId], references: [id])
-  car        Car          @relation(fields: [carId], references: [id])
+  car        Car          @relation(fields: [carId], references: [id], onDelete: Cascade)
   station    FuelStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
 
   @@map("fuel_entries")
@@ -77,7 +80,7 @@ model ServiceEntry {
   odometerKm Int           @map("odometer_km")
   title      String?
   user       User          @relation(fields: [userId], references: [id])
-  car        Car           @relation(fields: [carId], references: [id])
+  car        Car           @relation(fields: [carId], references: [id], onDelete: Cascade)
   items      ServiceItem[]
 
   @@map("service_entries")

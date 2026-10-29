@@ -107,7 +107,7 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
   The list shows a type badge, item count and total, and expands to show the items.
 - Adjust `calculations.js` so `serviceCost` keeps summing `entry.cost` (the API still returns it), plus a repair vs MoT split for the summary. Extend `calculations.test.js`.
 
-## Step 5 — MoT and OC/AC expiry
+## Step 5 — MoT and OC/AC expiry ✅
 - Schema `Car`: `inspectionValidUntil`, `ocValidUntil`, `acValidUntil` (all `Date?`).
 - Server:
   - generalize `PATCH /api/cars/:id` to accept `name`, `purchasePrice` and the three dates, partially: only the fields that are sent change

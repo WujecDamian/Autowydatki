@@ -85,6 +85,16 @@ const readServiceBody = (body) => {
     return { error: `Wpis może mieć najwyżej ${maximumItems} pozycji.` };
   }
 
+  let nextInspectionDate = null;
+
+  if (kind === "INSPECTION" && !isBlank(body.nextInspectionDate)) {
+    if (!isRealDate(body.nextInspectionDate) || body.nextInspectionDate <= body.entryDate) {
+      return { error: "Data ważności badania musi być późniejsza niż data badania." };
+    }
+
+    nextInspectionDate = body.nextInspectionDate;
+  }
+
   const items = [];
 
   for (const rawItem of body.items) {
@@ -103,8 +113,20 @@ const readServiceBody = (body) => {
     entryDate: body.entryDate,
     odometerKm,
     items,
+    nextInspectionDate,
   };
 };
+
+// A new inspection date on the entry also becomes the car's inspection expiry.
+const inspectionUpdate = (carId, service) =>
+  service.nextInspectionDate
+    ? [
+        prisma.car.update({
+          where: { id: carId },
+          data: { inspectionValidUntil: fromDateString(service.nextInspectionDate) },
+        }),
+      ]
+    : [];
 
 const readEntryId = (rawId) => {
   const id = Number(rawId);
@@ -149,19 +171,22 @@ servicesRouter.post("/", requireLogin, async (req, res) => {
       return;
     }
 
-    // A nested create writes the entry and its items in one transaction.
-    const created = await prisma.serviceEntry.create({
-      data: {
-        userId: req.user.id,
-        carId: car.id,
-        kind: service.kind,
-        entryDate: fromDateString(service.entryDate),
-        odometerKm: service.odometerKm,
-        title: service.title,
-        items: { create: service.items },
-      },
-      select: serviceFields,
-    });
+    // The nested create writes the entry and its items; the car update joins the same transaction.
+    const [created] = await prisma.$transaction([
+      prisma.serviceEntry.create({
+        data: {
+          userId: req.user.id,
+          carId: car.id,
+          kind: service.kind,
+          entryDate: fromDateString(service.entryDate),
+          odometerKm: service.odometerKm,
+          title: service.title,
+          items: { create: service.items },
+        },
+        select: serviceFields,
+      }),
+      ...inspectionUpdate(car.id, service),
+    ]);
 
     res.status(201).json(serializeServiceEntry(created));
   } catch (error) {
@@ -188,7 +213,7 @@ servicesRouter.patch("/:id", requireLogin, async (req, res) => {
 
     const existing = await prisma.serviceEntry.findFirst({
       where: { id, userId: req.user.id },
-      select: { id: true },
+      select: { id: true, carId: true },
     });
 
     if (!existing) {
@@ -197,17 +222,20 @@ servicesRouter.patch("/:id", requireLogin, async (req, res) => {
     }
 
     // The item list is replaced as a whole, in the same transaction as the entry.
-    const updated = await prisma.serviceEntry.update({
-      where: { id: existing.id },
-      data: {
-        kind: service.kind,
-        entryDate: fromDateString(service.entryDate),
-        odometerKm: service.odometerKm,
-        title: service.title,
-        items: { deleteMany: {}, create: service.items },
-      },
-      select: serviceFields,
-    });
+    const [updated] = await prisma.$transaction([
+      prisma.serviceEntry.update({
+        where: { id: existing.id },
+        data: {
+          kind: service.kind,
+          entryDate: fromDateString(service.entryDate),
+          odometerKm: service.odometerKm,
+          title: service.title,
+          items: { deleteMany: {}, create: service.items },
+        },
+        select: serviceFields,
+      }),
+      ...inspectionUpdate(existing.carId, service),
+    ]);
 
     res.json(serializeServiceEntry(updated));
   } catch (error) {

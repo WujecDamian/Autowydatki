@@ -63,6 +63,8 @@ const initialState = (entry, defaultKind) => {
       entryDate: entry.entryDate,
       odometerKm: String(entry.odometerKm),
       items: itemsFromEntry(entry),
+      // Editing never moves the car's inspection date unless a new one is typed in.
+      nextInspectionDate: "",
     };
   }
 
@@ -72,7 +74,19 @@ const initialState = (entry, defaultKind) => {
     entryDate: todayString(),
     odometerKm: "",
     items: defaultKind === "INSPECTION" ? [feeItem()] : [],
+    // null follows the entry date (one year later) until the user picks a date.
+    nextInspectionDate: null,
   };
+};
+
+// "2026-10-29" -> "2027-10-29"; 29 February becomes 28 February.
+const oneYearLater = (dateString) => {
+  if (!dateString) {
+    return "";
+  }
+
+  const [year, month, day] = dateString.split("-");
+  return `${Number(year) + 1}-${month}-${month === "02" && day === "29" ? "28" : day}`;
 };
 
 const toCents = (cost) => {
@@ -126,6 +140,7 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
   const selectedKeys = new Set(form.items.map((item) => item.key));
   const customItems = form.items.filter((item) => item.custom);
   const totalCents = form.items.reduce((sum, item) => sum + toCents(item.cost), 0);
+  const nextInspectionDate = form.nextInspectionDate ?? oneYearLater(form.entryDate);
 
   const setField = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -220,6 +235,7 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
       title: form.title,
       entryDate: form.entryDate,
       odometerKm: Number(form.odometerKm),
+      nextInspectionDate: form.kind === "INSPECTION" ? nextInspectionDate || null : null,
       items: form.items.map((item) => ({
         category: item.category,
         name: item.name,
@@ -275,6 +291,23 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
           value={form.title}
           onChange={setField}
         />
+        {form.kind === "INSPECTION" ? (
+          <div className="col-span-2 grid gap-1">
+            <Field
+              id="service-next-inspection"
+              label="Badanie ważne do"
+              name="nextInspectionDate"
+              type="date"
+              value={nextInspectionDate}
+              onChange={setField}
+            />
+            <p className="text-xs text-muted-foreground">
+              {entry
+                ? "Wpisz datę, jeśli chcesz zmienić termin badania auta."
+                : "Ten termin pojawi się na Pulpicie."}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-2">

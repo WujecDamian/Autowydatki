@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { ArrowDown01Icon, Car01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
+import { carNeedsAttention } from "../../lib/expiry.js";
+import { todayString } from "../../lib/format.js";
 import { AddCarForm } from "../AddCarForm/AddCarForm.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { Icon } from "../Icon/Icon.jsx";
 
 export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
   const [open, setOpen] = useState(false);
+  const today = todayString();
+  const anyNeedsAttention = cars.some((car) => carNeedsAttention(car, today));
 
   const choose = (carId) => {
     onSelect(carId);
@@ -20,8 +24,13 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
         onClick={() => setOpen(true)}
         className="-ml-2 flex min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-accent/50"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+        <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
           <Icon icon={Car01Icon} />
+          {anyNeedsAttention ? (
+            <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full border-2 border-background bg-destructive">
+              <span className="sr-only">Termin wymaga uwagi</span>
+            </span>
+          ) : null}
         </span>
         <span className="min-w-0">
           <span className="block text-xs text-muted-foreground">Autowydatki</span>
@@ -51,6 +60,9 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
                     >
                       <Icon icon={Car01Icon} className="text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate font-medium">{car.name}</span>
+                      {carNeedsAttention(car, today) ? (
+                        <span className="text-xs font-medium text-destructive">Termin!</span>
+                      ) : null}
                       {isSelected ? <Icon icon={Tick02Icon} className="text-primary" /> : null}
                     </button>
                   </li>

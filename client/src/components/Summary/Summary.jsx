@@ -2,6 +2,7 @@ import { useOutletContext } from "react-router";
 import { getSummary } from "../../calculations.js";
 import { useGetFuelQuery, useGetServicesQuery } from "../../app/api.js";
 import { consumption, money } from "../../lib/format.js";
+import { ExpiryTiles } from "../ExpiryTiles/ExpiryTiles.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 
 const Tile = ({ label, value, hint }) => (
@@ -35,6 +36,7 @@ export const Summary = () => {
   return (
     <section className="grid gap-4">
       <PageHeader title="Pulpit" description={car.name} />
+      <ExpiryTiles car={car} />
       <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/35 via-primary/10 to-card p-5">
         <div className="absolute -top-16 -right-16 size-48 rounded-full bg-primary/30 blur-3xl" />
         <p className="relative text-sm text-foreground/80">Łączny koszt auta</p>

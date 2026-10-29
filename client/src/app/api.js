@@ -52,13 +52,20 @@ export const api = createApi({
       }),
       invalidatesTags: ["Car"],
     }),
-    updateCarPrice: builder.mutation({
-      query: ({ id, purchasePrice }) => ({
+    updateCar: builder.mutation({
+      query: ({ id, ...changes }) => ({
         url: `/cars/${id}`,
         method: "PATCH",
-        body: { purchasePrice },
+        body: changes,
       }),
       invalidatesTags: ["Car"],
+    }),
+    deleteCar: builder.mutation({
+      query: (id) => ({
+        url: `/cars/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Car", "Fuel", "Service"],
     }),
     getFuel: builder.query({
       query: (carId) => `/fuel?carId=${carId}`,
@@ -123,7 +130,7 @@ export const api = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Service"],
+      invalidatesTags: ["Service", "Car"],
     }),
     updateService: builder.mutation({
       query: ({ id, ...body }) => ({
@@ -131,7 +138,7 @@ export const api = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: ["Service"],
+      invalidatesTags: ["Service", "Car"],
     }),
     deleteService: builder.mutation({
       query: (id) => ({
@@ -149,7 +156,8 @@ export const {
   useGetMeQuery,
   useGetCarsQuery,
   useAddCarMutation,
-  useUpdateCarPriceMutation,
+  useUpdateCarMutation,
+  useDeleteCarMutation,
   useGetFuelQuery,
   useAddFuelMutation,
   useDeleteFuelMutation,
