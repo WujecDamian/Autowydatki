@@ -74,7 +74,7 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
   - the last used station is preselected
   - the station name is shown on each fuel card
 
-## Step 4 — Repairs and MoT checklists
+## Step 4 — Repairs and MoT checklists ✅
 - Schema:
   - `ServiceEntry`: add `kind ServiceKind @default(REPAIR)` (`REPAIR | INSPECTION`) and make `title` optional
   - new `ServiceItem { id, serviceEntryId, category, name, cost Decimal }` with cascade delete
@@ -96,7 +96,7 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
   - POST/GET/DELETE take and return `kind`, `items[]` (1–50 items, each cost ≥ 0) and a computed `cost`
   - create runs as a nested write, so it is atomic
   - add `PATCH /:id` so an entry can be edited
-- An INSPECTION entry can include `nextInspectionDate`. When set, the same transaction updates `Car.inspectionValidUntil` (Step 5).
+- Moved to Step 5 (the car date fields arrive there): an INSPECTION entry can include `nextInspectionDate`. When set, the same transaction updates `Car.inspectionValidUntil`.
 - Client drawer:
   1. a Naprawa / Badanie techniczne toggle
   2. date + mileage (+ optional title)

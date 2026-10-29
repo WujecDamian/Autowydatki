@@ -1,6 +1,9 @@
 export const getSummary = (fuelEntries, serviceEntries) => {
   const fuelCost = fuelEntries.reduce((sum, entry) => sum + entry.totalCost, 0);
   const serviceCost = serviceEntries.reduce((sum, entry) => sum + entry.cost, 0);
+  const inspectionCost = serviceEntries
+    .filter((entry) => entry.kind === "INSPECTION")
+    .reduce((sum, entry) => sum + entry.cost, 0);
   const sortedFuel = [...fuelEntries].sort((a, b) => a.odometerKm - b.odometerKm);
   const perFill = [];
   let liters = 0;
@@ -27,6 +30,8 @@ export const getSummary = (fuelEntries, serviceEntries) => {
   return {
     fuelCost,
     serviceCost,
+    repairCost: serviceCost - inspectionCost,
+    inspectionCost,
     totalCost: fuelCost + serviceCost,
     averageLitersPer100km: distance > 0 ? (liters / distance) * 100 : null,
     perFill,

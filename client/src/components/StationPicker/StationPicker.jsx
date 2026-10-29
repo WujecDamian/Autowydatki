@@ -72,7 +72,7 @@ export const StationPicker = ({ value, onChange }) => {
       <Label htmlFor="fuel-station">Stacja</Label>
       <div className="flex items-center gap-2">
         <Select value={value === null ? noStation : String(value)} onValueChange={onSelect}>
-          <SelectTrigger id="fuel-station" className="h-11 w-full px-3 text-base">
+          <SelectTrigger id="fuel-station" className="h-11 w-full px-3 text-base data-[size=default]:h-11">
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="max-h-72">

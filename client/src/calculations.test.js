@@ -48,3 +48,18 @@ test("money totals add fuel and service", () => {
   assert.equal(summary.serviceCost, 80);
   assert.equal(summary.totalCost, 430);
 });
+
+test("service cost is split into repairs and inspections", () => {
+  const summary = getSummary(
+    [],
+    [
+      { id: 1, kind: "REPAIR", cost: 540 },
+      { id: 2, kind: "INSPECTION", cost: 149 },
+      { id: 3, kind: "REPAIR", cost: 60 },
+    ],
+  );
+
+  assert.equal(summary.serviceCost, 749);
+  assert.equal(summary.repairCost, 600);
+  assert.equal(summary.inspectionCost, 149);
+});

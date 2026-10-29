@@ -113,6 +113,7 @@ export const api = createApi({
           ...entry,
           odometerKm: Number(entry.odometerKm),
           cost: Number(entry.cost),
+          items: entry.items.map((item) => ({ ...item, cost: Number(item.cost) })),
         })),
       providesTags: ["Service"],
     }),
@@ -120,6 +121,14 @@ export const api = createApi({
       query: (body) => ({
         url: "/services",
         method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Service"],
+    }),
+    updateService: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/services/${id}`,
+        method: "PATCH",
         body,
       }),
       invalidatesTags: ["Service"],
@@ -149,5 +158,6 @@ export const {
   useDeleteStationMutation,
   useGetServicesQuery,
   useAddServiceMutation,
+  useUpdateServiceMutation,
   useDeleteServiceMutation,
 } = api;

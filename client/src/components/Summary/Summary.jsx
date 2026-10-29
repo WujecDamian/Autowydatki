@@ -47,7 +47,15 @@ export const Summary = () => {
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile label="Paliwo" value={money.format(summary.fuelCost)} />
-        <Tile label="Serwis" value={money.format(summary.serviceCost)} />
+        <Tile
+          label="Serwis"
+          value={money.format(summary.serviceCost)}
+          hint={
+            summary.inspectionCost > 0
+              ? `Naprawy ${money.format(summary.repairCost)} · badania ${money.format(summary.inspectionCost)}`
+              : null
+          }
+        />
         <Tile
           label="Cena zakupu"
           value={car.purchasePrice === null ? "—" : money.format(purchase)}

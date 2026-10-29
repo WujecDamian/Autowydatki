@@ -15,6 +15,19 @@ export const consumption = new Intl.NumberFormat("pl-PL", {
 
 export const kilometers = new Intl.NumberFormat("pl-PL");
 
+const pluralRules = new Intl.PluralRules("pl-PL");
+
+// plural(2, "pozycja", "pozycje", "pozycji") === "pozycje"
+export const plural = (count, one, few, many) => {
+  const form = pluralRules.select(count);
+
+  if (form === "one") {
+    return one;
+  }
+
+  return form === "few" ? few : many;
+};
+
 export const formatDate = (value) => {
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;

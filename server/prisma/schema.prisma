@@ -62,16 +62,35 @@ model FuelStation {
   @@map("fuel_stations")
 }
 
+enum ServiceKind {
+  REPAIR
+  INSPECTION
+}
+
+// The entry's cost is the sum of its items.
 model ServiceEntry {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  carId      Int      @map("car_id")
-  entryDate  DateTime @map("entry_date") @db.Date
-  odometerKm Int      @map("odometer_km")
-  title      String
-  cost       Decimal  @db.Decimal(10, 2)
-  user       User     @relation(fields: [userId], references: [id])
-  car        Car      @relation(fields: [carId], references: [id])
+  id         Int           @id @default(autoincrement())
+  userId     Int           @map("user_id")
+  carId      Int           @map("car_id")
+  kind       ServiceKind   @default(REPAIR)
+  entryDate  DateTime      @map("entry_date") @db.Date
+  odometerKm Int           @map("odometer_km")
+  title      String?
+  user       User          @relation(fields: [userId], references: [id])
+  car        Car           @relation(fields: [carId], references: [id])
+  items      ServiceItem[]
 
   @@map("service_entries")
+}
+
+model ServiceItem {
+  id             Int          @id @default(autoincrement())
+  serviceEntryId Int          @map("service_entry_id")
+  category       String
+  name           String
+  cost           Decimal      @db.Decimal(10, 2)
+  serviceEntry   ServiceEntry @relation(fields: [serviceEntryId], references: [id], onDelete: Cascade)
+
+  @@index([serviceEntryId])
+  @@map("service_items")
 }

@@ -1,26 +1,71 @@
 import { Router } from "express";
 import { fromDateString, prisma, toDateString } from "../db.js";
 import { requireLogin } from "../passport.js";
+import { serviceCategories } from "../serviceCategories.js";
 import { isBlank, isRealDate } from "../validation.js";
 import { findOwnedCar } from "./cars.js";
 
 export const servicesRouter = Router();
 
+const serviceKinds = ["REPAIR", "INSPECTION"];
+const maximumItems = 50;
+const maximumTitleLength = 80;
+const maximumItemNameLength = 80;
+// DECIMAL(10, 2) holds at most 99 999 999.99.
+const maximumCost = 99999999.99;
+
 const serviceFields = {
   id: true,
+  kind: true,
   entryDate: true,
   odometerKm: true,
   title: true,
-  cost: true,
+  items: {
+    select: { id: true, category: true, name: true, cost: true },
+    orderBy: { id: "asc" },
+  },
 };
 
-const serializeServiceEntry = (entry) => ({ ...entry, entryDate: toDateString(entry.entryDate) });
+const serializeServiceEntry = (entry) => {
+  const cents = entry.items.reduce((sum, item) => sum + Math.round(Number(item.cost) * 100), 0);
+
+  return { ...entry, entryDate: toDateString(entry.entryDate), cost: cents / 100 };
+};
+
+const readItem = (item) => {
+  const category = typeof item?.category === "string" ? item.category : "";
+  const name = typeof item?.name === "string" ? item.name.trim() : "";
+  const cost = Number(item?.cost);
+
+  if (!serviceCategories.includes(category)) {
+    return { error: "Nieznana kategoria pozycji." };
+  }
+
+  if (!name) {
+    return { error: "Każda pozycja musi mieć nazwę." };
+  }
+
+  if (name.length > maximumItemNameLength) {
+    return { error: "Nazwa pozycji jest za długa." };
+  }
+
+  if (isBlank(item?.cost) || !Number.isFinite(cost) || cost < 0 || cost > maximumCost) {
+    return { error: `Podaj prawidłową cenę dla „${name}”.` };
+  }
+
+  return { category, name, cost };
+};
 
 const readServiceBody = (body) => {
+  const kind = serviceKinds.includes(body.kind) ? body.kind : null;
   const title = typeof body.title === "string" ? body.title.trim() : "";
 
-  if (!title) {
-    return { error: "Podaj nazwę serwisu." };
+  if (!kind) {
+    return { error: "Wybierz rodzaj wpisu." };
+  }
+
+  if (title.length > maximumTitleLength) {
+    return { error: "Tytuł jest za długi." };
   }
 
   if (!isRealDate(body.entryDate)) {
@@ -32,17 +77,38 @@ const readServiceBody = (body) => {
     return { error: "Przebieg musi być liczbą całkowitą równą lub większą od 0." };
   }
 
-  const cost = Number(body.cost);
-  if (isBlank(body.cost) || !Number.isFinite(cost) || cost < 0) {
-    return { error: "Koszt musi być równy lub większy od 0." };
+  if (!Array.isArray(body.items) || body.items.length === 0) {
+    return { error: "Zaznacz przynajmniej jedną pozycję." };
+  }
+
+  if (body.items.length > maximumItems) {
+    return { error: `Wpis może mieć najwyżej ${maximumItems} pozycji.` };
+  }
+
+  const items = [];
+
+  for (const rawItem of body.items) {
+    const item = readItem(rawItem);
+
+    if (item.error) {
+      return { error: item.error };
+    }
+
+    items.push(item);
   }
 
   return {
-    title,
+    kind,
+    title: title || null,
     entryDate: body.entryDate,
     odometerKm,
-    cost,
+    items,
   };
+};
+
+const readEntryId = (rawId) => {
+  const id = Number(rawId);
+  return Number.isInteger(id) ? id : null;
 };
 
 servicesRouter.get("/", requireLogin, async (req, res) => {
@@ -83,14 +149,16 @@ servicesRouter.post("/", requireLogin, async (req, res) => {
       return;
     }
 
+    // A nested create writes the entry and its items in one transaction.
     const created = await prisma.serviceEntry.create({
       data: {
         userId: req.user.id,
         carId: car.id,
+        kind: service.kind,
         entryDate: fromDateString(service.entryDate),
         odometerKm: service.odometerKm,
         title: service.title,
-        cost: service.cost,
+        items: { create: service.items },
       },
       select: serviceFields,
     });
@@ -102,15 +170,62 @@ servicesRouter.post("/", requireLogin, async (req, res) => {
   }
 });
 
-servicesRouter.delete("/:id", requireLogin, async (req, res) => {
+servicesRouter.patch("/:id", requireLogin, async (req, res) => {
   try {
-    const id = Number(req.params.id);
+    const id = readEntryId(req.params.id);
 
-    if (!Number.isInteger(id)) {
+    if (id === null) {
       res.status(400).json({ message: "Nieprawidłowe id." });
       return;
     }
 
+    const service = readServiceBody(req.body ?? {});
+
+    if (service.error) {
+      res.status(400).json({ message: service.error });
+      return;
+    }
+
+    const existing = await prisma.serviceEntry.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      res.status(404).json({ message: "Nie znaleziono serwisu." });
+      return;
+    }
+
+    // The item list is replaced as a whole, in the same transaction as the entry.
+    const updated = await prisma.serviceEntry.update({
+      where: { id: existing.id },
+      data: {
+        kind: service.kind,
+        entryDate: fromDateString(service.entryDate),
+        odometerKm: service.odometerKm,
+        title: service.title,
+        items: { deleteMany: {}, create: service.items },
+      },
+      select: serviceFields,
+    });
+
+    res.json(serializeServiceEntry(updated));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Nie udało się zapisać serwisu." });
+  }
+});
+
+servicesRouter.delete("/:id", requireLogin, async (req, res) => {
+  try {
+    const id = readEntryId(req.params.id);
+
+    if (id === null) {
+      res.status(400).json({ message: "Nieprawidłowe id." });
+      return;
+    }
+
+    // Items are removed by the cascade on service_items.
     const result = await prisma.serviceEntry.deleteMany({ where: { id, userId: req.user.id } });
 
     if (result.count === 0) {
