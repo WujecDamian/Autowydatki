@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.js";
 import { carsRouter } from "./routes/cars.js";
 import { fuelRouter } from "./routes/fuel.js";
 import { servicesRouter } from "./routes/services.js";
+import { stationsRouter } from "./routes/stations.js";
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use("/api", authRouter);
 app.use("/api/cars", carsRouter);
 app.use("/api/fuel", fuelRouter);
 app.use("/api/services", servicesRouter);
+app.use("/api/stations", stationsRouter);
 
 const port = Number(process.env.PORT) || 3001;
 

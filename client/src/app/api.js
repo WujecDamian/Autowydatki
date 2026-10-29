@@ -16,7 +16,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Car", "Fuel", "Service"],
+  tagTypes: ["Car", "Fuel", "Service", "Station"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (body) => ({
@@ -86,6 +86,26 @@ export const api = createApi({
       }),
       invalidatesTags: ["Fuel"],
     }),
+    getStations: builder.query({
+      query: () => "/stations",
+      providesTags: ["Station"],
+    }),
+    addStation: builder.mutation({
+      query: (name) => ({
+        url: "/stations",
+        method: "POST",
+        body: { name },
+      }),
+      invalidatesTags: ["Station"],
+    }),
+    deleteStation: builder.mutation({
+      query: (id) => ({
+        url: `/stations/${id}`,
+        method: "DELETE",
+      }),
+      // Fuel entries lose the deleted station's name, so they are refetched too.
+      invalidatesTags: ["Station", "Fuel"],
+    }),
     getServices: builder.query({
       query: (carId) => `/services?carId=${carId}`,
       transformResponse: (entries) =>
@@ -124,6 +144,9 @@ export const {
   useGetFuelQuery,
   useAddFuelMutation,
   useDeleteFuelMutation,
+  useGetStationsQuery,
+  useAddStationMutation,
+  useDeleteStationMutation,
   useGetServicesQuery,
   useAddServiceMutation,
   useDeleteServiceMutation,

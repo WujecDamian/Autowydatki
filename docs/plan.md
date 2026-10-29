@@ -59,7 +59,7 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
 - Add shadcn components: `drawer`, `dialog`, `alert-dialog`, `checkbox`, `select`, `textarea`, `badge`, `dropdown-menu`, `avatar`.
 - Share the formatters (`money`, `formatDate`, `consumption`, copied today across 3 components) in `client/src/lib/format.js`.
 
-## Step 3 — Fuel stations (brand only + custom)
+## Step 3 — Fuel stations (brand only + custom) ✅
 - Schema:
   - `FuelStation { id, name, userId Int? }`. A null `userId` is a built-in brand.
   - `FuelEntry.stationId Int?`

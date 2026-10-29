@@ -17,6 +17,7 @@ import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
 import { Field } from "../Field/Field.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
+import { StationPicker } from "../StationPicker/StationPicker.jsx";
 
 const emptyForm = () => ({
   entryDate: todayString(),
@@ -25,8 +26,9 @@ const emptyForm = () => ({
   totalCost: "",
 });
 
-const FuelForm = ({ carId, onSaved }) => {
+const FuelForm = ({ carId, defaultStationId, onSaved }) => {
   const [form, setForm] = useState(emptyForm);
+  const [stationId, setStationId] = useState(defaultStationId);
   const [addFuel, addState] = useAddFuelMutation();
   const errorMessage = errorText(addState.error, "Nie udało się zapisać tankowania.");
 
@@ -47,6 +49,7 @@ const FuelForm = ({ carId, onSaved }) => {
         odometerKm: Number(form.odometerKm),
         liters: Number(form.liters),
         totalCost: Number(form.totalCost),
+        stationId,
       }).unwrap();
       setForm(emptyForm());
       onSaved();
@@ -57,6 +60,9 @@ const FuelForm = ({ carId, onSaved }) => {
 
   return (
     <form className="grid grid-cols-2 gap-4" onSubmit={onSubmit}>
+      <div className="col-span-2">
+        <StationPicker value={stationId} onChange={setStationId} />
+      </div>
       <Field
         id="fuel-date"
         label="Data"
@@ -155,8 +161,11 @@ export const FuelSection = () => {
             <li key={entry.id} className="grid gap-2 rounded-2xl border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium">{formatDate(entry.entryDate)}</p>
+                  <p className="truncate font-medium">
+                    {entry.station ? entry.station.name : formatDate(entry.entryDate)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
+                    {entry.station ? `${formatDate(entry.entryDate)} · ` : ""}
                     {kilometers.format(entry.odometerKm)} km
                   </p>
                 </div>
@@ -187,7 +196,12 @@ export const FuelSection = () => {
       </ul>
       <AddButton label="Dodaj tankowanie" onClick={() => setFormOpen(true)} />
       <FormDrawer open={formOpen} onOpenChange={setFormOpen} title="Nowe tankowanie">
-        <FuelForm carId={car.id} onSaved={() => setFormOpen(false)} />
+        {/* The newest entry's station is the default, so regulars tap it only once. */}
+        <FuelForm
+          carId={car.id}
+          defaultStationId={fuel[0]?.station?.id ?? null}
+          onSaved={() => setFormOpen(false)}
+        />
       </FormDrawer>
     </section>
   );

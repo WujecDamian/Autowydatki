@@ -17,6 +17,7 @@ model User {
   cars         Car[]
   fuelEntries  FuelEntry[]
   services     ServiceEntry[]
+  fuelStations FuelStation[]
 
   @@map("users")
 }
@@ -34,17 +35,31 @@ model Car {
 }
 
 model FuelEntry {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  carId      Int      @map("car_id")
-  entryDate  DateTime @map("entry_date") @db.Date
-  odometerKm Int      @map("odometer_km")
-  liters     Decimal  @db.Decimal(8, 2)
-  totalCost  Decimal  @map("total_cost") @db.Decimal(10, 2)
-  user       User     @relation(fields: [userId], references: [id])
-  car        Car      @relation(fields: [carId], references: [id])
+  id         Int          @id @default(autoincrement())
+  userId     Int          @map("user_id")
+  carId      Int          @map("car_id")
+  entryDate  DateTime     @map("entry_date") @db.Date
+  odometerKm Int          @map("odometer_km")
+  liters     Decimal      @db.Decimal(8, 2)
+  totalCost  Decimal      @map("total_cost") @db.Decimal(10, 2)
+  stationId  Int?         @map("station_id")
+  user       User         @relation(fields: [userId], references: [id])
+  car        Car          @relation(fields: [carId], references: [id])
+  station    FuelStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
 
   @@map("fuel_entries")
+}
+
+// Rows without a user are the built-in Polish brands seeded by the migration.
+model FuelStation {
+  id          Int         @id @default(autoincrement())
+  userId      Int?        @map("user_id")
+  name        String
+  user        User?       @relation(fields: [userId], references: [id])
+  fuelEntries FuelEntry[]
+
+  @@index([userId])
+  @@map("fuel_stations")
 }
 
 model ServiceEntry {

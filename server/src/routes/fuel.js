@@ -3,6 +3,7 @@ import { fromDateString, prisma, toDateString } from "../db.js";
 import { requireLogin } from "../passport.js";
 import { isBlank, isRealDate } from "../validation.js";
 import { findOwnedCar } from "./cars.js";
+import { findUsableStation } from "./stations.js";
 
 export const fuelRouter = Router();
 
@@ -12,6 +13,7 @@ const fuelFields = {
   odometerKm: true,
   liters: true,
   totalCost: true,
+  station: { select: { id: true, name: true } },
 };
 
 const serializeFuelEntry = (entry) => ({ ...entry, entryDate: toDateString(entry.entryDate) });
@@ -82,6 +84,19 @@ fuelRouter.post("/", requireLogin, async (req, res) => {
       return;
     }
 
+    let stationId = null;
+
+    if (!isBlank(req.body?.stationId)) {
+      const station = await findUsableStation(req.user.id, req.body.stationId);
+
+      if (!station) {
+        res.status(400).json({ message: "Nie znaleziono stacji." });
+        return;
+      }
+
+      stationId = station.id;
+    }
+
     const created = await prisma.fuelEntry.create({
       data: {
         userId: req.user.id,
@@ -90,6 +105,7 @@ fuelRouter.post("/", requireLogin, async (req, res) => {
         odometerKm: fuel.odometerKm,
         liters: fuel.liters,
         totalCost: fuel.totalCost,
+        stationId,
       },
       select: fuelFields,
     });
