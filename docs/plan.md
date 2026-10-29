@@ -40,20 +40,20 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
   - `GOOGLE_CLIENT_ID` (server), `VITE_GOOGLE_CLIENT_ID` (client)
   - Google Cloud Console setup: OAuth client of type Web, with authorized JS origins `http://localhost:5173` and the Pages domain
 
-## Step 2 — Dark purple, mobile-first restyle
+## Step 2 — Dark purple, mobile-first restyle ✅
 - **Theme**, in `client/src/index.css`:
   - dark only, so the purple dark palette goes directly in `:root`
-  - delete the light palette, the `.dark` block and the `@custom-variant dark`
+  - delete the light palette and the `.dark` block. `<html class="dark">` is set permanently, so the ui components' `dark:` variants still apply
   - add `color-scheme: dark`
   - palette direction: background near-black violet (`oklch(0.16 0.03 290)`), cards a step lighter, primary vivid purple (`oklch(0.65 0.22 295)`), a subtle violet glow/gradient on hero cards
   - status colors for expiry: green/amber/red tokens
   - `index.html`: `<meta name="theme-color">`, `viewport-fit=cover`
 - **Navigation:** add `react-router` (library mode) so the phone back button and deep links work.
   - Routes: `/` Pulpit (summary + expiry alerts), `/paliwo`, `/serwis`, `/notatki`, `/auto` (details, dates, photos)
-  - All routes are scoped to the selected car, which is kept in the URL `?car=`, or the last one used from localStorage
+  - All routes are scoped to the selected car, remembered in localStorage and passed to pages through the layout's `<Outlet context>`
 - **Layout shell:** replace `CarSidebar` + the header in `App.jsx`.
   - Top bar: car switcher (cover thumbnail + name, opens a bottom sheet listing cars + "Dodaj auto") and the user avatar menu (logout).
-  - Fixed bottom tab bar with 5 icons (lucide is already installed), with safe-area padding.
+  - Fixed bottom tab bar (Hugeicons, matching the shadcn config) with safe-area padding. It starts with 4 tabs; Step 7 adds Notatki.
   - On `md+`, the bottom bar becomes a left rail and the content is centered (max-w ~3xl).
 - **Forms:** move into bottom-sheet drawers opened by a floating "+" button per screen, instead of the always-visible cards. Lists become compact cards. Deleting asks for confirmation (AlertDialog).
 - Add shadcn components: `drawer`, `dialog`, `alert-dialog`, `checkbox`, `select`, `textarea`, `badge`, `dropdown-menu`, `avatar`.
