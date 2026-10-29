@@ -10,7 +10,10 @@ datasource db {
 model User {
   id           Int            @id @default(autoincrement())
   email        String         @unique
-  passwordHash String         @map("password_hash")
+  passwordHash String?        @map("password_hash")
+  googleId     String?        @unique @map("google_id")
+  name         String?
+  avatarUrl    String?        @map("avatar_url")
   cars         Car[]
   fuelEntries  FuelEntry[]
   services     ServiceEntry[]

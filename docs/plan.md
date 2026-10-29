@@ -15,13 +15,13 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
 
 **Stack today:** Express 5 + Prisma 7 (Postgres/Supabase) + passport-jwt in `server/`. React 19 + RTK Query + Tailwind v4 + shadcn in `client/`. All UI text is Polish.
 
-## Step 0 — Housekeeping
+## Step 0 — Housekeeping ✅
 - Copy this plan to `docs/plan.md` in the repo and tick steps off as they land.
 - Work on a feature branch, with one commit per step below.
 - Move the duplicated `isRealDate`/`isBlank` (in `server/src/routes/fuel.js` and `services.js`) into `server/src/validation.js`. The new routes will reuse them.
 - Every schema change goes in `server/prisma/schema.prisma` and runs through `npm run db:migrate` (data moves are hand-edited into the generated SQL).
 
-## Step 1 — Google Auth (keep demo login)
+## Step 1 — Google Auth (keep demo login) ✅
 **Approach:** use Google Identity Services. The client gets a Google ID token and the server verifies it, then issues our existing JWT. There are no sessions or redirects, so the rest of the auth stays unchanged.
 - Schema `User`:
   - `passwordHash` becomes nullable

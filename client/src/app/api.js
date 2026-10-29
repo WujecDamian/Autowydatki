@@ -25,6 +25,16 @@ export const api = createApi({
         body,
       }),
     }),
+    googleLogin: builder.mutation({
+      query: (credential) => ({
+        url: "/auth/google",
+        method: "POST",
+        body: { credential },
+      }),
+    }),
+    getMe: builder.query({
+      query: () => "/me",
+    }),
     getCars: builder.query({
       query: () => "/cars",
       transformResponse: (entries) =>
@@ -106,6 +116,8 @@ export const api = createApi({
 
 export const {
   useLoginMutation,
+  useGoogleLoginMutation,
+  useGetMeQuery,
   useGetCarsQuery,
   useAddCarMutation,
   useUpdateCarPriceMutation,
