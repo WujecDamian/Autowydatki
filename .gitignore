@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Generated Prisma client
 server/src/generated/
+
+# Personal Claude Code settings
+.claude/settings.local.json
