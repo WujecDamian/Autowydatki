@@ -38,9 +38,15 @@ export const Summary = () => {
       <PageHeader title="Pulpit" description={car.name} />
       <ExpiryTiles car={car} />
       <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/35 via-primary/10 to-card p-5">
+        {car.coverUrl ? (
+          <>
+            <img src={car.coverUrl} alt="" className="absolute inset-0 size-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-br from-background/85 via-primary/40 to-background/60" />
+          </>
+        ) : null}
         <div className="absolute -top-16 -right-16 size-48 rounded-full bg-primary/30 blur-3xl" />
         <p className="relative text-sm text-foreground/80">Łączny koszt auta</p>
-        <p className="relative mt-1 font-heading text-4xl font-semibold tracking-tight">
+        <p className="relative mt-1 font-heading text-4xl font-semibold tracking-tight drop-shadow">
           {money.format(summary.totalCost + purchase)}
         </p>
         <p className="relative mt-2 text-xs text-foreground/70">

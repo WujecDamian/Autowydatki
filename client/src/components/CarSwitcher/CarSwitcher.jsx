@@ -25,7 +25,11 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
         className="-ml-2 flex min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-accent/50"
       >
         <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-          <Icon icon={Car01Icon} />
+          {selectedCar?.coverThumbUrl ? (
+            <img src={selectedCar.coverThumbUrl} alt="" className="size-full rounded-xl object-cover" />
+          ) : (
+            <Icon icon={Car01Icon} />
+          )}
           {anyNeedsAttention ? (
             <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full border-2 border-background bg-destructive">
               <span className="sr-only">Termin wymaga uwagi</span>
@@ -58,7 +62,13 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
                         isSelected ? "border-primary/60 bg-primary/10" : "hover:bg-accent/50",
                       )}
                     >
-                      <Icon icon={Car01Icon} className="text-muted-foreground" />
+                      {car.coverThumbUrl ? (
+                        <img src={car.coverThumbUrl} alt="" className="size-9 rounded-lg object-cover" />
+                      ) : (
+                        <span className="flex size-9 items-center justify-center">
+                          <Icon icon={Car01Icon} className="text-muted-foreground" />
+                        </span>
+                      )}
                       <span className="min-w-0 flex-1 truncate font-medium">{car.name}</span>
                       {carNeedsAttention(car, today) ? (
                         <span className="text-xs font-medium text-destructive">Termin!</span>

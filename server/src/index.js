@@ -3,8 +3,10 @@ import express from "express";
 import passport from "passport";
 import { ensureAdminUser } from "./db.js";
 import "./passport.js";
+import { localUploadsRoute, uploadsDir } from "./storage.js";
 import { authRouter } from "./routes/auth.js";
 import { carsRouter } from "./routes/cars.js";
+import { photosRouter } from "./routes/photos.js";
 import { fuelRouter } from "./routes/fuel.js";
 import { servicesRouter } from "./routes/services.js";
 import { stationsRouter } from "./routes/stations.js";
@@ -30,6 +32,9 @@ app.use("/api/cars", carsRouter);
 app.use("/api/fuel", fuelRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/stations", stationsRouter);
+app.use("/api", photosRouter);
+// Only used when Supabase Storage is not configured (local development).
+app.use(localUploadsRoute, express.static(uploadsDir));
 
 const port = Number(process.env.PORT) || 3001;
 

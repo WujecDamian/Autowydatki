@@ -11,15 +11,18 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@supabase/supabase-js": "^2.118.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "google-auth-library": "^11.3.2",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "prisma": "^7.10.1"
+    "prisma": "^7.10.1",
+    "sharp": "^0.35.5"
   },
   "engines": {
     "node": ">=22.18"

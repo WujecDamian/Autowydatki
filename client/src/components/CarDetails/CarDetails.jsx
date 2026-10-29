@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useDeleteCarMutation, useUpdateCarMutation } from "../../app/api.js";
 import { expiryTone, getExpiryStatus } from "../../lib/expiry.js";
 import { errorText, todayString } from "../../lib/format.js";
+import { CarPhotos } from "../CarPhotos/CarPhotos.jsx";
 import { Field } from "../Field/Field.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 
@@ -145,7 +146,7 @@ const DeleteCar = ({ car }) => {
       <div className="grid gap-1">
         <h2 className="font-heading font-semibold">Usuń auto</h2>
         <p className="text-sm text-muted-foreground">
-          Razem z autem znikną wszystkie jego tankowania i wpisy serwisowe.
+          Razem z autem znikną wszystkie jego tankowania, wpisy serwisowe i zdjęcia.
         </p>
       </div>
       {errorMessage ? (
@@ -163,7 +164,7 @@ const DeleteCar = ({ car }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Usunąć „{car.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tankowania i wpisy serwisowe tego auta zostaną usunięte. Tego nie da się cofnąć.
+              Tankowania, wpisy serwisowe i zdjęcia tego auta zostaną usunięte. Tego nie da się cofnąć.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -183,7 +184,8 @@ export const CarDetails = () => {
 
   return (
     <section className="grid gap-4">
-      <PageHeader title={car.name} description="Dane auta i terminy" />
+      <PageHeader title={car.name} description="Zdjęcia, dane auta i terminy" />
+      <CarPhotos car={car} />
       <CarForm key={car.id} car={car} />
       <DeleteCar car={car} />
     </section>

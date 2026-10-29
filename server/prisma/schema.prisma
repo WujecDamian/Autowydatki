@@ -18,6 +18,7 @@ model User {
   fuelEntries  FuelEntry[]
   services     ServiceEntry[]
   fuelStations FuelStation[]
+  carPhotos    CarPhoto[]
 
   @@map("users")
 }
@@ -30,6 +31,9 @@ model Car {
   inspectionValidUntil DateTime?      @map("inspection_valid_until") @db.Date
   ocValidUntil         DateTime?      @map("oc_valid_until") @db.Date
   acValidUntil         DateTime?      @map("ac_valid_until") @db.Date
+  coverPhotoId         Int?           @unique @map("cover_photo_id")
+  coverPhoto           CarPhoto?      @relation("CarCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
+  photos               CarPhoto[]     @relation("CarPhotos")
   user                 User           @relation(fields: [userId], references: [id])
   fuelEntries          FuelEntry[]
   services             ServiceEntry[]
@@ -96,4 +100,19 @@ model ServiceItem {
 
   @@index([serviceEntryId])
   @@map("service_items")
+}
+
+// Files live in storage (Supabase or server/uploads); storagePath points at the full-size image.
+model CarPhoto {
+  id          Int      @id @default(autoincrement())
+  carId       Int      @map("car_id")
+  userId      Int      @map("user_id")
+  storagePath String   @map("storage_path")
+  createdAt   DateTime @default(now()) @map("created_at")
+  car         Car      @relation("CarPhotos", fields: [carId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  coverOf     Car?     @relation("CarCover")
+
+  @@index([carId])
+  @@map("car_photos")
 }

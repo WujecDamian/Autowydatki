@@ -124,7 +124,7 @@ Autowydatki is a hard MVP: one shared admin account (public credentials so a rec
   - `/auto` has date inputs for all three
   - saving a MoT entry with a next date updates the tile automatically
 
-## Step 6 — Car cover photo and gallery (Supabase Storage)
+## Step 6 — Car cover photo and gallery (Supabase Storage) ✅
 - Schema:
   - `CarPhoto { id, carId, userId, storagePath, createdAt }`
   - `Car.coverPhotoId Int? @unique` (relation to `CarPhoto`, `onDelete: SetNull`)

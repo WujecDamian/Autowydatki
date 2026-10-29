@@ -16,7 +16,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Car", "Fuel", "Service", "Station"],
+  tagTypes: ["Car", "Fuel", "Service", "Station", "Photo"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (body) => ({
@@ -65,7 +65,28 @@ export const api = createApi({
         url: `/cars/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Car", "Fuel", "Service"],
+      invalidatesTags: ["Car", "Fuel", "Service", "Photo"],
+    }),
+    getPhotos: builder.query({
+      query: (carId) => `/cars/${carId}/photos`,
+      providesTags: ["Photo"],
+    }),
+    uploadPhoto: builder.mutation({
+      query: ({ carId, file }) => {
+        const body = new FormData();
+        body.append("photo", file);
+
+        return { url: `/cars/${carId}/photos`, method: "POST", body };
+      },
+      // The first photo becomes the car's cover.
+      invalidatesTags: ["Photo", "Car"],
+    }),
+    deletePhoto: builder.mutation({
+      query: (id) => ({
+        url: `/photos/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Photo", "Car"],
     }),
     getFuel: builder.query({
       query: (carId) => `/fuel?carId=${carId}`,
@@ -158,6 +179,9 @@ export const {
   useAddCarMutation,
   useUpdateCarMutation,
   useDeleteCarMutation,
+  useGetPhotosQuery,
+  useUploadPhotoMutation,
+  useDeletePhotoMutation,
   useGetFuelQuery,
   useAddFuelMutation,
   useDeleteFuelMutation,
