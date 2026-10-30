@@ -134,7 +134,7 @@
     z-index: -1;
     background: radial-gradient(
       280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
-      oklch(0.66 0.21 295 / 0.14),
+      oklch(0.66 0.21 295 / 0.014),
       transparent 70%
     );
   }
