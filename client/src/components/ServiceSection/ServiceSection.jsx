@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { useDeleteServiceMutation, useGetServicesQuery } from "../../app/api.js";
 import { formatDate, kilometers, money } from "../../lib/format.js";
+import { useMediaQuery } from "../../lib/useMediaQuery.js";
+import { FormPanel } from "../FormPanel/FormPanel.jsx";
 import { AddButton } from "../AddButton/AddButton.jsx";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
 import { EditButton } from "../EditButton/EditButton.jsx";
@@ -35,7 +37,17 @@ export const ServiceSection = () => {
   const [deleteService, deleteState] = useDeleteServiceMutation();
   // null: drawer closed, { entry: null }: new entry, { entry }: editing that entry.
   const [editing, setEditing] = useState(null);
+  const desktop = useMediaQuery("(min-width: 64rem)");
+  const active = editing ?? (desktop ? { entry: null } : null);
   const services = serviceQuery.data ?? [];
+  const serviceForm = active ? (
+    <ServiceForm
+      key={active.entry?.id ?? "new"}
+      carId={car.id}
+      entry={active.entry}
+      onSaved={() => setEditing(null)}
+    />
+  ) : null;
 
   return (
     <section className="grid gap-4">
@@ -53,9 +65,10 @@ export const ServiceSection = () => {
           Brak wpisów. Dodaj pierwszą naprawę albo badanie przyciskiem +.
         </p>
       ) : null}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <ul className="grid gap-3">
         {services.map((entry) => (
-          <li key={entry.id} className="flex items-start gap-1 rounded-2xl border bg-card p-1">
+          <li key={entry.id} data-glow="" className="flex items-start gap-1 rounded-2xl border bg-card p-1">
             <button
               type="button"
               onClick={() => setEditing({ entry })}
@@ -71,7 +84,7 @@ export const ServiceSection = () => {
                   </Badge>
                   <p className="truncate font-medium">{entryTitle(entry)}</p>
                 </div>
-                <p className="shrink-0 font-heading text-lg font-semibold">
+                <p className="shrink-0 font-heading text-lg font-semibold tabular-nums">
                   {money.format(entry.cost)}
                 </p>
               </div>
@@ -94,9 +107,18 @@ export const ServiceSection = () => {
           </li>
         ))}
       </ul>
+      {desktop && active ? (
+        <FormPanel
+          title={active.entry ? "Edytuj wpis" : "Nowy wpis serwisowy"}
+          onReset={editing ? () => setEditing(null) : undefined}
+        >
+          {serviceForm}
+        </FormPanel>
+      ) : null}
+      </div>
       <AddButton label="Dodaj wpis serwisowy" onClick={() => setEditing({ entry: null })} />
       <FormDrawer
-        open={editing !== null}
+        open={editing !== null && !desktop}
         onOpenChange={(open) => {
           if (!open) {
             setEditing(null);
@@ -104,14 +126,7 @@ export const ServiceSection = () => {
         }}
         title={editing?.entry ? "Edytuj wpis" : "Nowy wpis serwisowy"}
       >
-        {editing ? (
-          <ServiceForm
-            key={editing.entry?.id ?? "new"}
-            carId={car.id}
-            entry={editing.entry}
-            onSaved={() => setEditing(null)}
-          />
-        ) : null}
+        {serviceForm}
       </FormDrawer>
     </section>
   );
