@@ -117,6 +117,64 @@ fuelRouter.post("/", requireLogin, async (req, res) => {
   }
 });
 
+fuelRouter.patch("/:id", requireLogin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ message: "Nieprawidłowe id." });
+      return;
+    }
+
+    const fuel = readFuelBody(req.body ?? {});
+
+    if (fuel.error) {
+      res.status(400).json({ message: fuel.error });
+      return;
+    }
+
+    const existing = await prisma.fuelEntry.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      res.status(404).json({ message: "Nie znaleziono tankowania." });
+      return;
+    }
+
+    let stationId = null;
+
+    if (!isBlank(req.body?.stationId)) {
+      const station = await findUsableStation(req.user.id, req.body.stationId);
+
+      if (!station) {
+        res.status(400).json({ message: "Nie znaleziono stacji." });
+        return;
+      }
+
+      stationId = station.id;
+    }
+
+    const updated = await prisma.fuelEntry.update({
+      where: { id: existing.id },
+      data: {
+        entryDate: fromDateString(fuel.entryDate),
+        odometerKm: fuel.odometerKm,
+        liters: fuel.liters,
+        totalCost: fuel.totalCost,
+        stationId,
+      },
+      select: fuelFields,
+    });
+
+    res.json(serializeFuelEntry(updated));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Nie udało się zapisać tankowania." });
+  }
+});
+
 fuelRouter.delete("/:id", requireLogin, async (req, res) => {
   try {
     const id = Number(req.params.id);
