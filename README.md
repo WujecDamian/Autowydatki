@@ -1,65 +1,109 @@
 # Autowydatki
 
-Obliczanie kosztów auta. Paliwo, serwis, spalanie.
+Aplikacja webowa do liczenia kosztów utrzymania auta: tankowania, spalanie, serwisy, terminy OC/przeglądu i zdjęcia. Projekt full-stack napisany samodzielnie, wdrożony produkcyjnie.
 
-## Uruchomienie
+**Demo:** logowanie `admin@autowydatki.pl` / `autowydatki` (konto publiczne, dane testowe) lub przez Google.
 
-Potrzebujesz Node.js i lokalnego PostgreSQL.
+## Co potrafi
 
-1. Utwórz bazę:
+- Wiele aut na jednym koncie, osobne tankowania benzyny i LPG, spalanie i koszt na 100 km.
+- Serwisy z listą pozycji i sumą kosztów, wykresy miesięcznych wydatków i trendu cen paliwa.
+- Przypomnienia o wygasającym OC, AC i przeglądzie, notatki, zdjęcia aut (automatyczne skalowanie i miniatury).
+- Logowanie emailem i hasłem albo kontem Google.
+
+## Technologie
+
+| Warstwa | Stack |
+|---|---|
+| Frontend | React 19, Vite, Redux Toolkit (RTK Query), React Router, Tailwind CSS 4, shadcn/ui |
+| Backend | Node.js 22, Express 5, Passport (JWT), zod |
+| Baza danych | PostgreSQL, Prisma ORM (migracje w repozytorium) |
+| Pliki | Supabase Storage, `sharp` (obracanie wg EXIF, WebP, miniatury) |
+| Hosting | Cloudflare Pages (frontend), Render (API), Supabase (baza i zdjęcia) |
+| Jakość | Node test runner, Vitest, Testing Library, supertest, oxlint, GitHub Actions, Dependabot |
+
+## Jak przepływają dane
+
+```
+Przeglądarka (React + RTK Query)
+   │  HTTPS, JSON, nagłówek Authorization: Bearer <JWT>
+   ▼
+Express: logger → helmet → CORS → limit body → rate limit → JWT → walidacja zod → trasa
+   │  Prisma (zapytania parametryzowane, zawsze filtrowane po userId)
+   ▼
+PostgreSQL (ograniczenia CHECK, indeksy)        Supabase Storage (zdjęcia)
+```
+
+1. Logowanie (hasło lub token Google) zwraca JWT ważny 7 dni. Klient dołącza go do każdego żądania.
+2. Serwer sprawdza token, waliduje dane schematem zod i dopiero wtedy zapisuje je przez Prisma.
+3. Każdy błąd wraca w jednym formacie `{ message, code, fields }`, a formularze pokazują komunikat pod właściwym polem.
+4. Wygasły token (401) automatycznie wylogowuje użytkownika i czyści dane z pamięci podręcznej.
+
+## Walidacja
+
+Trzy warstwy, każda łapie to, co przepuściła poprzednia:
+
+1. **Przeglądarka:** atrybuty pól i komunikaty pod polami (wygoda użytkownika, nie zabezpieczenie).
+2. **Serwer (zod):** każde żądanie jest sprawdzane przed zapisem. Ścisłe liczby (`"1e3"` odrzucone, przecinek dziesiętny przyjęty), limity wartości, nieistniejące daty, brak dat z przyszłości, nieznane pola są wycinane.
+3. **Baza:** ograniczenia `CHECK` i indeksy dodane migracją, więc nawet pominięcie API nie wpuści błędnych danych.
+
+Kwoty liczone są w groszach (liczby całkowite), żeby uniknąć błędów typu `0.1 + 0.2`.
+
+## Bezpieczeństwo
+
+- Hasła hashowane **bcrypt**, JWT, identyczny błąd dla złego hasła i nieznanego emaila (brak wycieku, które konta istnieją).
+- **Izolacja danych:** każde zapytanie filtrowane po `userId`, sprawdzone testami (użytkownik B nie odczyta, nie zmieni ani nie usunie danych użytkownika A).
+- **Rate limiting:** 20 prób logowania / 15 min na IP, 300 żądań API / min.
+- **helmet** (nagłówki bezpieczeństwa), CORS ograniczony do adresu frontendu, limit rozmiaru body, filtr typów i rozmiaru plików.
+- Prisma (brak SQL injection), `sharp` ponownie koduje zdjęcia (usuwa ukryte dane z pliku).
+- Serwer **nie uruchomi się** w produkcji ze słabym `JWT_SECRET` lub bez `CORS_ORIGIN`.
+- Błędy 500 nie ujawniają szczegółów użytkownikowi, a w logach (pino, JSON) każde żądanie ma `X-Request-Id`, token jest ukrywany.
+- `/health` sprawdza także bazę danych (pod monitoring).
+
+## Testy i CI
+
+| Rodzaj | Narzędzia | Co sprawdza |
+|---|---|---|
+| Jednostkowe | Node test runner | Schematy walidacji, obliczenia spalania i kosztów, formatowanie |
+| API (integracyjne) | supertest + prawdziwa baza PostgreSQL | Logowanie, sfałszowany i wygasły token, dostęp do cudzych danych, błędne dane (zawsze 400, nigdy 500), ograniczenia bazy, rate limit |
+| Komponentowe | Vitest + Testing Library | Błędy pod polami, `ErrorBoundary`, formularz dodawania auta z podmienionym `fetch` |
+
+**GitHub Actions** przy każdym pull requeście: walidacja Prisma, migracje na tymczasowym PostgreSQL, wszystkie testy, lint i build frontendu. **Dependabot** co tydzień zgłasza aktualizacje zależności.
+Testy API odmawiają uruchomienia na bazie, której nazwa nie kończy się na `_test`.
+
+## Uruchomienie lokalne
+
+Wymagane: Node.js 22+ i PostgreSQL.
 
 ```bash
 createdb autowydatki
+cp server/.env.example server/.env        # uzupełnij zmienne
+cd server && npm install && npm run dev   # stosuje migracje i startuje API
+cd client && npm install && npm run dev   # http://localhost:5173
 ```
 
-2. Skopiuj `server/.env.example` do `server/.env`.
-3. W katalogu `server` uruchom `npm install`, a potem `npm run dev` (przy starcie stosuje migracje Prisma). Schemat zmienia się w `server/prisma/schema.prisma` poleceniem `npm run db:migrate`.
-4. W katalogu `client` uruchom `npm install`, a potem `npm run dev`.
-5. Otwórz http://localhost:5173.
+Testy:
 
-Test obliczeń spalania: w katalogu `client` uruchom `npm test`.
+```bash
+cd client && npm test && npm run test:components && npm run lint
+cd server && npm test                                  # bez bazy
+createdb autowydatki_test && DATABASE_URL=postgres://localhost:5432/autowydatki_test npx prisma migrate deploy
+cd server && TEST_DATABASE_URL=postgres://localhost:5432/autowydatki_test npm run test:api
+```
 
-## Wdrożenie produkcyjne
+## Wdrożenie
 
-Baza: Supabase, API: Render, frontend: Cloudflare Pages.
+Baza: Supabase, API: Render (`npm start` stosuje migracje, health check `/health`), frontend: Cloudflare Pages (`npm run build`, katalog `dist`).
+Zmienne środowiskowe opisują pliki `server/.env.example` i `client/.env.example`. Najważniejsze:
 
-1. **Supabase** – utwórz projekt i skopiuj connection string (Session pooler) z *Project Settings → Database*. Tabele tworzą się automatycznie przy starcie API (`prisma migrate deploy` w `npm start`), a konto administratora zakłada się po migracji.
-2. **Render** – Web Service z katalogu `server` (Build: `npm install`, Start: `npm start`, Health check: `/health`). Zmienne środowiskowe (wzór w `server/.env.example`):
-   - `DATABASE_URL` – connection string z Supabase (bez `DATABASE_SSL`)
-   - `JWT_SECRET` – długi losowy sekret
-   - `ADMIN_EMAIL`, `ADMIN_PASSWORD`
-   - `CORS_ORIGIN` – adres frontendu, np. `https://autowydatki.pages.dev`
-   - `GOOGLE_CLIENT_ID` – ID klienta OAuth (patrz niżej)
-   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET` – przechowywanie zdjęć (patrz niżej)
-3. **Cloudflare Pages** – katalog główny `client`, Build: `npm run build`, Output: `dist`. Zmienna `VITE_API_URL` = adres API z Render (bez końcowego `/`; wzór w `client/.env.example`) oraz `VITE_GOOGLE_CLIENT_ID` = to samo ID co `GOOGLE_CLIENT_ID`. Zmienne są wkompilowane w build, więc po zmianie trzeba zbudować frontend ponownie.
+- Serwer: `DATABASE_URL`, `JWT_SECRET` (min. 32 znaki), `CORS_ORIGIN`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GOOGLE_CLIENT_ID`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET`, opcjonalnie `DATABASE_CA`, `LOG_LEVEL`.
+- Klient (wkompilowane w build): `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`.
 
-## Logowanie
+Logowanie Google: w Google Cloud Console utwórz *OAuth client ID* (Web application), dodaj adresy frontendu do *Authorized JavaScript origins*. Bez tych zmiennych przycisk Google się nie pokazuje.
+Zdjęcia: w Supabase utwórz publiczny bucket `car-photos`. Bez `SUPABASE_URL` zdjęcia zapisują się lokalnie w `server/uploads/` (tylko do developmentu).
 
-Konto administratora jest tworzone przy pierwszym starcie serwera.
+Logo stacji paliw pochodzą z oficjalnych stron marek i służą wyłącznie do rozpoznania stacji.
 
-- Email: `admin@autowydatki.pl`
-- Hasło: `autowydatki`
+## Świadome ograniczenia
 
-Te same dane są na stronie logowania. Hasło jest publiczne, żeby rekruter mógł otworzyć aplikację. Sekret do podpisywania tokenu zostaje w `server/.env`.
-
-### Logowanie przez Google
-
-1. W [Google Cloud Console](https://console.cloud.google.com/apis/credentials) utwórz *OAuth client ID* typu **Web application**.
-2. W *Authorized JavaScript origins* dodaj `http://localhost:5173` oraz adres frontendu (np. `https://autowydatki.pages.dev`). Redirect URI nie jest potrzebny.
-3. Wpisz ID klienta jako `GOOGLE_CLIENT_ID` w `server/.env` i jako `VITE_GOOGLE_CLIENT_ID` w `client/.env`.
-
-Bez tych zmiennych przycisk Google się nie pokazuje, a logowanie emailem działa dalej. Konto Google z tym samym potwierdzonym adresem co istniejące konto zostaje z nim połączone.
-
-### Zdjęcia aut (Supabase Storage)
-
-1. W Supabase: *Storage → New bucket*, nazwa `car-photos`, zaznacz **Public bucket**.
-2. Z *Project Settings → Data API* skopiuj **Project URL** (bez `/rest/v1/`), a z *Project Settings → API Keys* klucz **secret** (albo `service_role` w starszych projektach).
-3. Wpisz je w `server/.env` (wzór w `server/.env.example`) i w zmiennych środowiskowych na Render. Klucz nigdy nie trafia do `client/.env`.
-
-Bez `SUPABASE_URL` zdjęcia zapisują się lokalnie w `server/uploads/` i są serwowane przez API pod `/api/uploads` – wygodne w developmencie, ale na Render pliki zniknęłyby przy każdym wdrożeniu.
-
-Serwer obraca zdjęcia według EXIF, zmniejsza je do 1600 px (WebP) i robi miniaturę 400×400. Format HEIC z iPhone'a nie jest obsługiwany przez serwer; Safari przy wyborze zdjęcia z galerii zwykle sam zamienia je na JPEG.
-
-### Logo stacji paliw
-
-Logo sieci w `client/public/station-logos/` zostały pobrane jednorazowo z oficjalnych stron marek (favicon / apple-touch-icon) i przeskalowane do 96×96 px. Służą tylko do rozpoznania stacji. Sieci bez dostępnej ikony (Moya, Avia, Huzar, Carrefour) i własne stacje użytkownika mają kolorowy inicjał.
+Nie ma jeszcze testów end-to-end (Playwright) ani zewnętrznego śledzenia błędów (Sentry); token JWT jest w `localStorage`, a limity zapytań są w pamięci jednej instancji. Szczegóły i uzasadnienia: [docs/production-readiness-summary.md](docs/production-readiness-summary.md).
