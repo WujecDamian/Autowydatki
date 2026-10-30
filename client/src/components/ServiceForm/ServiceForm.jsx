@@ -110,7 +110,7 @@ const PriceInput = ({ item, label, onChange }) => (
 );
 
 const KindToggle = ({ kind, onChange }) => (
-  <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Rodzaj wpisu">
+  <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1" role="group" aria-label="Rodzaj wpisu">
     {[
       ["REPAIR", "Naprawa"],
       ["INSPECTION", "Badanie techniczne"],
@@ -120,7 +120,7 @@ const KindToggle = ({ kind, onChange }) => (
         type="button"
         aria-pressed={kind === value}
         onClick={() => onChange(value)}
-        className="h-10 rounded-lg text-sm font-medium text-muted-foreground transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+        className="h-11 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-pressed:bg-primary-fill aria-pressed:text-primary-foreground"
       >
         {label}
       </button>

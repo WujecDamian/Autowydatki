@@ -26,6 +26,10 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-primary-fill: var(--primary-fill);
+    --color-primary-fill-hover: var(--primary-fill-hover);
+    --color-primary-soft: var(--primary-soft);
+    --color-destructive-soft: var(--destructive-soft);
     --color-success: var(--success);
     --color-warning: var(--warning);
     --color-accent-foreground: var(--accent-foreground);
@@ -62,6 +66,12 @@
     --popover-foreground: oklch(0.97 0.01 290);
     --primary: oklch(0.66 0.21 295);
     --primary-foreground: oklch(0.99 0 0);
+    /* Solid fill behind white text (5.4:1); --primary itself stays for text and tints. */
+    --primary-fill: oklch(0.56 0.21 295);
+    --primary-fill-hover: oklch(0.62 0.21 295);
+    /* Lighter purple for icons and text sitting on a primary tint. */
+    --primary-soft: oklch(0.82 0.14 295);
+    --destructive-soft: oklch(0.78 0.15 22);
     --secondary: oklch(0.27 0.045 290);
     --secondary-foreground: oklch(0.97 0.01 290);
     --muted: oklch(0.25 0.035 290);
@@ -88,6 +98,50 @@
     --sidebar-accent-foreground: oklch(0.97 0.01 290);
     --sidebar-border: oklch(1 0 0 / 9%);
     --sidebar-ring: oklch(0.66 0.21 295);
+}
+
+/* Cursor-following border glow: any element with data-glow lights its border where the pointer is.
+   The pointer position comes from lib/glow.js as --glow-x / --glow-y. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-glow] {
+    position: relative;
+    isolation: isolate;
+  }
+  [data-glow]::before,
+  [data-glow]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  [data-glow]::before {
+    z-index: 1;
+    padding: 1.5px;
+    background: radial-gradient(
+      220px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+      oklch(0.82 0.16 295 / 0.95),
+      oklch(0.66 0.21 295 / 0.4) 45%,
+      transparent 75%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  [data-glow]::after {
+    z-index: -1;
+    background: radial-gradient(
+      280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+      oklch(0.66 0.21 295 / 0.14),
+      transparent 70%
+    );
+  }
+  [data-glow]:hover::before,
+  [data-glow]:hover::after {
+    opacity: 1;
+  }
 }
 
 @layer base {

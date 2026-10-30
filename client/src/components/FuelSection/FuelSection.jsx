@@ -47,14 +47,14 @@ const initialForm = (entry) =>
 const fuelTypeLabels = { PETROL: "Benzyna", LPG: "LPG" };
 
 const FuelTypeToggle = ({ value, onChange }) => (
-  <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Rodzaj paliwa">
+  <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1" role="group" aria-label="Rodzaj paliwa">
     {Object.entries(fuelTypeLabels).map(([fuelType, label]) => (
       <button
         key={fuelType}
         type="button"
         aria-pressed={value === fuelType}
         onClick={() => onChange(fuelType)}
-        className="h-10 rounded-lg text-sm font-medium text-muted-foreground transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+        className="h-11 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-pressed:bg-primary-fill aria-pressed:text-primary-foreground"
       >
         {label}
       </button>
