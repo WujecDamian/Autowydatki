@@ -1,49 +1,11 @@
-import cors from "cors";
-import express from "express";
-import passport from "passport";
+import { app } from "./app.js";
 import { ensureAdminUser } from "./db.js";
-import "./passport.js";
-import { localUploadsRoute, uploadsDir } from "./storage.js";
-import { authRouter } from "./routes/auth.js";
-import { carsRouter } from "./routes/cars.js";
-import { photosRouter } from "./routes/photos.js";
-import { fuelRouter } from "./routes/fuel.js";
-import { notesRouter } from "./routes/notes.js";
-import { servicesRouter } from "./routes/services.js";
-import { stationsRouter } from "./routes/stations.js";
-
-const app = express();
-
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
-  .split(",")
-  .map((origin) => origin.trim().replace(/\/$/, ""))
-  .filter(Boolean);
-
-app.set("trust proxy", 1);
-app.use(cors({ origin: allowedOrigins }));
-app.use(express.json());
-app.use(passport.initialize());
-
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
-app.use("/api", authRouter);
-app.use("/api/cars", carsRouter);
-app.use("/api/fuel", fuelRouter);
-app.use("/api/services", servicesRouter);
-app.use("/api/stations", stationsRouter);
-app.use("/api/notes", notesRouter);
-app.use("/api", photosRouter);
-// Only used when Supabase Storage is not configured (local development).
-app.use(localUploadsRoute, express.static(uploadsDir));
-
-const port = Number(process.env.PORT) || 3001;
+import { env } from "./env.js";
 
 ensureAdminUser()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`API listening on ${port}`);
+    app.listen(env.port, () => {
+      console.log(`API listening on ${env.port}`);
     });
   })
   .catch((error) => {

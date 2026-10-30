@@ -6,7 +6,9 @@
     "dev": "prisma migrate deploy && node --watch src/index.js",
     "start": "prisma migrate deploy && node src/index.js",
     "postinstall": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "test": "node --test src/*.test.js",
+    "test:api": "node --test --test-concurrency=1 test/*.test.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
@@ -16,15 +18,23 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.7.2",
     "google-auth-library": "^11.3.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
     "prisma": "^7.10.1",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "zod": "^4.6.7"
   },
   "engines": {
     "node": ">=22.18"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1"
   }
 }

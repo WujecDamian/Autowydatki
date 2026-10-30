@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { fromDateString, prisma, toDateString } from "../db.js";
 import { requireLogin } from "../passport.js";
-import { isBlank, isRealDate } from "../validation.js";
+import { fuelSchema, parseId } from "../schemas.js";
 import { findOwnedCar } from "./cars.js";
 import { findUsableStation } from "./stations.js";
 
@@ -19,193 +19,116 @@ const fuelFields = {
 
 const serializeFuelEntry = (entry) => ({ ...entry, entryDate: toDateString(entry.entryDate) });
 
-const fuelTypes = ["PETROL", "LPG"];
-
-const readFuelBody = (body) => {
-  const fuelType = isBlank(body.fuelType) ? "PETROL" : body.fuelType;
-
-  if (!fuelTypes.includes(fuelType)) {
-    return { error: "Nieznany rodzaj paliwa." };
-  }
-
-  if (!isRealDate(body.entryDate)) {
-    return { error: "Podaj prawidłową datę." };
-  }
-
-  const odometerKm = Number(body.odometerKm);
-  if (isBlank(body.odometerKm) || !Number.isInteger(odometerKm) || odometerKm < 0) {
-    return { error: "Przebieg musi być liczbą całkowitą równą lub większą od 0." };
-  }
-
-  const liters = Number(body.liters);
-  if (isBlank(body.liters) || !Number.isFinite(liters) || liters <= 0) {
-    return { error: "Litry muszą być większe od 0." };
-  }
-
-  const totalCost = Number(body.totalCost);
-  if (isBlank(body.totalCost) || !Number.isFinite(totalCost) || totalCost < 0) {
-    return { error: "Koszt musi być równy lub większy od 0." };
-  }
-
-  return {
-    entryDate: body.entryDate,
-    odometerKm,
-    liters,
-    totalCost,
-    fuelType,
-  };
-};
-
 fuelRouter.get("/", requireLogin, async (req, res) => {
-  try {
-    const car = await findOwnedCar(req.user.id, req.query.carId);
+  const car = await findOwnedCar(req.user.id, req.query.carId);
 
-    if (!car) {
-      res.status(404).json({ message: "Nie znaleziono auta." });
-      return;
-    }
-
-    const entries = await prisma.fuelEntry.findMany({
-      where: { userId: req.user.id, carId: car.id },
-      select: fuelFields,
-      orderBy: [{ entryDate: "desc" }, { id: "desc" }],
-    });
-
-    res.json(entries.map(serializeFuelEntry));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się pobrać tankowań." });
+  if (!car) {
+    res.status(404).json({ message: "Nie znaleziono auta." });
+    return;
   }
+
+  const entries = await prisma.fuelEntry.findMany({
+    where: { userId: req.user.id, carId: car.id },
+    select: fuelFields,
+    orderBy: [{ entryDate: "desc" }, { id: "desc" }],
+  });
+
+  res.json(entries.map(serializeFuelEntry));
 });
 
 fuelRouter.post("/", requireLogin, async (req, res) => {
-  try {
-    const fuel = readFuelBody(req.body ?? {});
+  const fuel = fuelSchema.parse(req.body ?? {});
 
-    if (fuel.error) {
-      res.status(400).json({ message: fuel.error });
-      return;
-    }
+  const car = await findOwnedCar(req.user.id, req.body?.carId);
 
-    const car = await findOwnedCar(req.user.id, req.body?.carId);
-
-    if (!car) {
-      res.status(404).json({ message: "Nie znaleziono auta." });
-      return;
-    }
-
-    let stationId = null;
-
-    if (!isBlank(req.body?.stationId)) {
-      const station = await findUsableStation(req.user.id, req.body.stationId);
-
-      if (!station) {
-        res.status(400).json({ message: "Nie znaleziono stacji." });
-        return;
-      }
-
-      stationId = station.id;
-    }
-
-    const created = await prisma.fuelEntry.create({
-      data: {
-        userId: req.user.id,
-        carId: car.id,
-        entryDate: fromDateString(fuel.entryDate),
-        odometerKm: fuel.odometerKm,
-        liters: fuel.liters,
-        totalCost: fuel.totalCost,
-        fuelType: fuel.fuelType,
-        stationId,
-      },
-      select: fuelFields,
-    });
-
-    res.status(201).json(serializeFuelEntry(created));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się zapisać tankowania." });
+  if (!car) {
+    res.status(404).json({ message: "Nie znaleziono auta." });
+    return;
   }
+
+  let stationId = null;
+
+  if (fuel.stationId) {
+    const station = await findUsableStation(req.user.id, fuel.stationId);
+
+    if (!station) {
+      res.status(400).json({ message: "Nie znaleziono stacji.", code: "NOT_FOUND" });
+      return;
+    }
+
+    stationId = station.id;
+  }
+
+  const created = await prisma.fuelEntry.create({
+    data: {
+      userId: req.user.id,
+      carId: car.id,
+      entryDate: fromDateString(fuel.entryDate),
+      odometerKm: fuel.odometerKm,
+      liters: fuel.liters,
+      totalCost: fuel.totalCost,
+      fuelType: fuel.fuelType,
+      stationId,
+    },
+    select: fuelFields,
+  });
+
+  res.status(201).json(serializeFuelEntry(created));
 });
 
 fuelRouter.patch("/:id", requireLogin, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+  const id = parseId(req.params.id);
 
-    if (!Number.isInteger(id)) {
-      res.status(400).json({ message: "Nieprawidłowe id." });
-      return;
-    }
+  const fuel = fuelSchema.parse(req.body ?? {});
 
-    const fuel = readFuelBody(req.body ?? {});
+  const existing = await prisma.fuelEntry.findFirst({
+    where: { id, userId: req.user.id },
+    select: { id: true },
+  });
 
-    if (fuel.error) {
-      res.status(400).json({ message: fuel.error });
-      return;
-    }
-
-    const existing = await prisma.fuelEntry.findFirst({
-      where: { id, userId: req.user.id },
-      select: { id: true },
-    });
-
-    if (!existing) {
-      res.status(404).json({ message: "Nie znaleziono tankowania." });
-      return;
-    }
-
-    let stationId = null;
-
-    if (!isBlank(req.body?.stationId)) {
-      const station = await findUsableStation(req.user.id, req.body.stationId);
-
-      if (!station) {
-        res.status(400).json({ message: "Nie znaleziono stacji." });
-        return;
-      }
-
-      stationId = station.id;
-    }
-
-    const updated = await prisma.fuelEntry.update({
-      where: { id: existing.id },
-      data: {
-        entryDate: fromDateString(fuel.entryDate),
-        odometerKm: fuel.odometerKm,
-        liters: fuel.liters,
-        totalCost: fuel.totalCost,
-        fuelType: fuel.fuelType,
-        stationId,
-      },
-      select: fuelFields,
-    });
-
-    res.json(serializeFuelEntry(updated));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się zapisać tankowania." });
+  if (!existing) {
+    res.status(404).json({ message: "Nie znaleziono tankowania." });
+    return;
   }
+
+  let stationId = null;
+
+  if (fuel.stationId) {
+    const station = await findUsableStation(req.user.id, fuel.stationId);
+
+    if (!station) {
+      res.status(400).json({ message: "Nie znaleziono stacji.", code: "NOT_FOUND" });
+      return;
+    }
+
+    stationId = station.id;
+  }
+
+  const updated = await prisma.fuelEntry.update({
+    where: { id: existing.id },
+    data: {
+      entryDate: fromDateString(fuel.entryDate),
+      odometerKm: fuel.odometerKm,
+      liters: fuel.liters,
+      totalCost: fuel.totalCost,
+      fuelType: fuel.fuelType,
+      stationId,
+    },
+    select: fuelFields,
+  });
+
+  res.json(serializeFuelEntry(updated));
 });
 
 fuelRouter.delete("/:id", requireLogin, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+  const id = parseId(req.params.id);
 
-    if (!Number.isInteger(id)) {
-      res.status(400).json({ message: "Nieprawidłowe id." });
-      return;
-    }
+  const result = await prisma.fuelEntry.deleteMany({ where: { id, userId: req.user.id } });
 
-    const result = await prisma.fuelEntry.deleteMany({ where: { id, userId: req.user.id } });
-
-    if (result.count === 0) {
-      res.status(404).json({ message: "Nie znaleziono tankowania." });
-      return;
-    }
-
-    res.status(204).end();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się usunąć tankowania." });
+  if (result.count === 0) {
+    res.status(404).json({ message: "Nie znaleziono tankowania." });
+    return;
   }
+
+  res.status(204).end();
 });

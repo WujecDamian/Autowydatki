@@ -2,11 +2,9 @@ import { Router } from "express";
 import { fromDateString, prisma, toDateString } from "../db.js";
 import { requireLogin } from "../passport.js";
 import { photoUrls, removeFiles, thumbnailPath } from "../storage.js";
-import { isBlank, isRealDate } from "../validation.js";
+import { carCreateSchema, carUpdateSchema, parseId, positiveInt } from "../schemas.js";
 
 export const carsRouter = Router();
-
-const maximumNameLength = 60;
 
 const dateFields = ["inspectionValidUntil", "ocValidUntil", "acValidUntil"];
 
@@ -36,214 +34,103 @@ const serializeCar = ({ coverPhoto, ...car }) => {
   return serialized;
 };
 
-const readName = (value) => {
-  const name = typeof value === "string" ? value.trim() : "";
-
-  if (!name) {
-    return { error: "Podaj nazwę auta." };
-  }
-
-  if (name.length > maximumNameLength) {
-    return { error: "Nazwa auta jest za długa." };
-  }
-
-  return { name };
-};
-
-const readPurchasePrice = (value) => {
-  if (isBlank(value)) {
-    return { purchasePrice: null };
-  }
-
-  const purchasePrice = Number(value);
-
-  if (!Number.isFinite(purchasePrice) || purchasePrice < 0) {
-    return { error: "Cena zakupu musi być równa lub większa od 0." };
-  }
-
-  return { purchasePrice };
-};
-
-// Only the fields present in the body are changed; a blank date clears it.
-const readCarChanges = (body) => {
-  const data = {};
-
-  if ("name" in body) {
-    const result = readName(body.name);
-
-    if (result.error) {
-      return result;
-    }
-
-    data.name = result.name;
-  }
-
-  if ("purchasePrice" in body) {
-    const result = readPurchasePrice(body.purchasePrice);
-
-    if (result.error) {
-      return result;
-    }
-
-    data.purchasePrice = result.purchasePrice;
-  }
-
-  if ("hasLpg" in body) {
-    if (typeof body.hasLpg !== "boolean") {
-      return { error: "Nieprawidłowa wartość LPG." };
-    }
-
-    data.hasLpg = body.hasLpg;
-  }
-
-  for (const field of dateFields) {
-    if (!(field in body)) {
-      continue;
-    }
-
-    if (isBlank(body[field])) {
-      data[field] = null;
-    } else if (isRealDate(body[field])) {
-      data[field] = fromDateString(body[field]);
-    } else {
-      return { error: "Podaj prawidłową datę." };
-    }
-  }
-
-  return { data };
-};
-
 export const findOwnedCar = async (userId, rawCarId) => {
-  const carId = Number(rawCarId);
+  const parsed = positiveInt.safeParse(rawCarId);
 
-  if (!Number.isInteger(carId)) {
+  if (!parsed.success) {
     return null;
   }
+
+  const carId = parsed.data;
 
   return prisma.car.findFirst({ where: { id: carId, userId }, select: { id: true, name: true } });
 };
 
 carsRouter.get("/", requireLogin, async (req, res) => {
-  try {
-    const cars = await prisma.car.findMany({
-      where: { userId: req.user.id },
-      select: carFields,
-      orderBy: { id: "asc" },
-    });
+  const cars = await prisma.car.findMany({
+    where: { userId: req.user.id },
+    select: carFields,
+    orderBy: { id: "asc" },
+  });
 
-    res.json(cars.map(serializeCar));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się pobrać aut." });
-  }
+  res.json(cars.map(serializeCar));
 });
 
 carsRouter.post("/", requireLogin, async (req, res) => {
-  try {
-    const name = readName(req.body?.name);
+  const { name, purchasePrice } = carCreateSchema.parse(req.body ?? {});
 
-    if (name.error) {
-      res.status(400).json({ message: name.error });
-      return;
-    }
+  const created = await prisma.car.create({
+    data: { userId: req.user.id, name, purchasePrice },
+    select: carFields,
+  });
 
-    const price = readPurchasePrice(req.body?.purchasePrice);
-
-    if (price.error) {
-      res.status(400).json({ message: price.error });
-      return;
-    }
-
-    const created = await prisma.car.create({
-      data: { userId: req.user.id, name: name.name, purchasePrice: price.purchasePrice },
-      select: carFields,
-    });
-
-    res.status(201).json(serializeCar(created));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się dodać auta." });
-  }
+  res.status(201).json(serializeCar(created));
 });
 
 carsRouter.patch("/:id", requireLogin, async (req, res) => {
-  try {
-    const car = await findOwnedCar(req.user.id, req.params.id);
+  const car = await findOwnedCar(req.user.id, req.params.id);
 
-    if (!car) {
-      res.status(404).json({ message: "Nie znaleziono auta." });
-      return;
-    }
-
-    const changes = readCarChanges(req.body ?? {});
-
-    if (changes.error) {
-      res.status(400).json({ message: changes.error });
-      return;
-    }
-
-    if ("coverPhotoId" in (req.body ?? {})) {
-      if (req.body.coverPhotoId === null) {
-        changes.data.coverPhotoId = null;
-      } else {
-        // The cover must be one of this car's own photos.
-        const photo = await prisma.carPhoto.findFirst({
-          where: { id: Number(req.body.coverPhotoId) || 0, carId: car.id },
-          select: { id: true },
-        });
-
-        if (!photo) {
-          res.status(400).json({ message: "Nie znaleziono zdjęcia." });
-          return;
-        }
-
-        changes.data.coverPhotoId = photo.id;
-      }
-    }
-
-    const updated = await prisma.car.update({
-      where: { id: car.id },
-      data: changes.data,
-      select: carFields,
-    });
-
-    res.json(serializeCar(updated));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się zapisać auta." });
+  if (!car) {
+    res.status(404).json({ message: "Nie znaleziono auta." });
+    return;
   }
+
+  const { coverPhotoId, ...data } = carUpdateSchema.parse(req.body ?? {});
+
+  for (const field of dateFields) {
+    if (data[field]) {
+      data[field] = fromDateString(data[field]);
+    }
+  }
+
+  if (coverPhotoId !== undefined) {
+    if (coverPhotoId === null) {
+      data.coverPhotoId = null;
+    } else {
+      // The cover must be one of this car's own photos.
+      const photo = await prisma.carPhoto.findFirst({
+        where: { id: coverPhotoId, carId: car.id },
+        select: { id: true },
+      });
+
+      if (!photo) {
+        res.status(400).json({ message: "Nie znaleziono zdjęcia.", code: "NOT_FOUND" });
+        return;
+      }
+
+      data.coverPhotoId = photo.id;
+    }
+  }
+
+  const updated = await prisma.car.update({
+    where: { id: car.id },
+    data,
+    select: carFields,
+  });
+
+  res.json(serializeCar(updated));
 });
 
 carsRouter.delete("/:id", requireLogin, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+  const id = parseId(req.params.id);
 
-    if (!Number.isInteger(id)) {
-      res.status(400).json({ message: "Nieprawidłowe id." });
-      return;
-    }
+  const photos = await prisma.carPhoto.findMany({
+    where: { carId: id, userId: req.user.id },
+    select: { storagePath: true },
+  });
 
-    const photos = await prisma.carPhoto.findMany({
-      where: { carId: id, userId: req.user.id },
-      select: { storagePath: true },
-    });
+  // Fuel and service entries and photo rows are removed by the database cascade.
+  const result = await prisma.car.deleteMany({ where: { id, userId: req.user.id } });
 
-    // Fuel and service entries and photo rows are removed by the database cascade.
-    const result = await prisma.car.deleteMany({ where: { id, userId: req.user.id } });
-
-    if (result.count === 0) {
-      res.status(404).json({ message: "Nie znaleziono auta." });
-      return;
-    }
-
-    // Storage is outside the database, so the photo files are removed separately.
-    await removeFiles(
-      photos.flatMap(({ storagePath }) => [storagePath, thumbnailPath(storagePath)]),
-    ).catch((error) => console.error(error));
-
-    res.status(204).end();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się usunąć auta." });
+  if (result.count === 0) {
+    res.status(404).json({ message: "Nie znaleziono auta." });
+    return;
   }
+
+  // Storage is outside the database, so the photo files are removed separately.
+  await removeFiles(
+    photos.flatMap(({ storagePath }) => [storagePath, thumbnailPath(storagePath)]),
+  ).catch((error) => console.error(error));
+
+  res.status(204).end();
 });

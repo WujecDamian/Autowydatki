@@ -3,7 +3,9 @@ import { Router } from "express";
 import multer from "multer";
 import sharp from "sharp";
 import { prisma } from "../db.js";
+import { HttpError } from "../errors.js";
 import { requireLogin } from "../passport.js";
+import { parseId } from "../schemas.js";
 import { photoUrls, removeFiles, saveFile, thumbnailPath } from "../storage.js";
 import { findOwnedCar } from "./cars.js";
 
@@ -16,15 +18,25 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: maximumUploadBytes, files: 1 },
   fileFilter: (req, file, callback) => {
-    callback(null, file.mimetype.startsWith("image/"));
+    if (!file.mimetype.startsWith("image/")) {
+      callback(new HttpError(400, "To nie jest zdjęcie. Użyj JPG, PNG albo WebP.", "NOT_AN_IMAGE"));
+      return;
+    }
+
+    callback(null, true);
   },
 });
 
 // multer reports its errors (e.g. a file that is too big) through next(error).
 const receivePhoto = (req, res, next) => {
   upload.single("photo")(req, res, (error) => {
+    if (error instanceof HttpError) {
+      res.status(error.status).json({ message: error.message, code: error.code });
+      return;
+    }
+
     if (error?.code === "LIMIT_FILE_SIZE") {
-      res.status(400).json({ message: "Zdjęcie jest za duże (maks. 15 MB)." });
+      res.status(400).json({ message: "Zdjęcie jest za duże (maks. 15 MB).", code: "TOO_LARGE" });
       return;
     }
 
@@ -145,14 +157,9 @@ photosRouter.post("/cars/:id/photos", requireLogin, receivePhoto, async (req, re
   }
 });
 
-photosRouter.delete("/photos/:id", requireLogin, async (req, res) => {
+photosRouter.delete("/photos/:id", requireLogin, async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-
-    if (!Number.isInteger(id)) {
-      res.status(400).json({ message: "Nieprawidłowe id." });
-      return;
-    }
+    const id = parseId(req.params.id);
 
     const photo = await prisma.carPhoto.findFirst({
       where: { id, userId: req.user.id },
@@ -189,6 +196,11 @@ photosRouter.delete("/photos/:id", requireLogin, async (req, res) => {
 
     res.status(204).end();
   } catch (error) {
+    if (error instanceof HttpError) {
+      next(error);
+      return;
+    }
+
     console.error(error);
     res.status(500).json({ message: "Nie udało się usunąć zdjęcia." });
   }

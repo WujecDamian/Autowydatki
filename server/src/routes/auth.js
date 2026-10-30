@@ -3,26 +3,30 @@ import { Router } from "express";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db.js";
+import { env } from "../env.js";
 import { requireLogin } from "../passport.js";
+import { loginLimiter } from "../rateLimit.js";
+import { loginSchema } from "../schemas.js";
 
 export const authRouter = Router();
 
 const googleClient = new OAuth2Client();
 
 const signToken = (user) =>
-  jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
+  jwt.sign({ id: user.id, email: user.email }, env.jwtSecret, {
     expiresIn: "7d",
   });
 
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", loginLimiter, async (req, res) => {
   try {
-    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
-    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const parsed = loginSchema.safeParse(req.body ?? {});
 
-    if (!email || !password) {
-      res.status(400).json({ message: "Podaj email i hasło." });
+    if (!parsed.success) {
+      res.status(400).json({ message: "Podaj email i hasło.", code: "VALIDATION" });
       return;
     }
+
+    const { email, password } = parsed.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
     // Google-only accounts have no password, so they cannot log in this way.
@@ -42,10 +46,10 @@ authRouter.post("/login", async (req, res) => {
   }
 });
 
-authRouter.post("/auth/google", async (req, res) => {
+authRouter.post("/auth/google", loginLimiter, async (req, res) => {
   const credential = typeof req.body?.credential === "string" ? req.body.credential : "";
 
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  if (!env.googleClientId) {
     res.status(503).json({ message: "Logowanie przez Google nie jest skonfigurowane." });
     return;
   }
@@ -60,7 +64,7 @@ authRouter.post("/auth/google", async (req, res) => {
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: env.googleClientId,
     });
     payload = ticket.getPayload();
   } catch {

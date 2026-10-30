@@ -1,10 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireLogin } from "../passport.js";
+import { parseId, stationSchema } from "../schemas.js";
 
 export const stationsRouter = Router();
-
-const maximumNameLength = 40;
 
 const stationFields = { id: true, name: true, userId: true };
 
@@ -31,76 +30,46 @@ export const findUsableStation = async (userId, rawStationId) => {
 };
 
 stationsRouter.get("/", requireLogin, async (req, res) => {
-  try {
-    const stations = await prisma.fuelStation.findMany({
-      where: usableBy(req.user.id),
-      select: stationFields,
-      orderBy: [{ userId: { sort: "asc", nulls: "first" } }, { name: "asc" }],
-    });
+  const stations = await prisma.fuelStation.findMany({
+    where: usableBy(req.user.id),
+    select: stationFields,
+    orderBy: [{ userId: { sort: "asc", nulls: "first" } }, { name: "asc" }],
+  });
 
-    res.json(stations.map(serializeStation));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się pobrać stacji." });
-  }
+  res.json(stations.map(serializeStation));
 });
 
 stationsRouter.post("/", requireLogin, async (req, res) => {
-  try {
-    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const { name } = stationSchema.parse(req.body ?? {});
 
-    if (!name) {
-      res.status(400).json({ message: "Podaj nazwę stacji." });
-      return;
-    }
+  const existing = await prisma.fuelStation.findFirst({
+    where: { name: { equals: name, mode: "insensitive" }, ...usableBy(req.user.id) },
+    select: { id: true },
+  });
 
-    if (name.length > maximumNameLength) {
-      res.status(400).json({ message: "Nazwa stacji jest za długa." });
-      return;
-    }
-
-    const existing = await prisma.fuelStation.findFirst({
-      where: { name: { equals: name, mode: "insensitive" }, ...usableBy(req.user.id) },
-      select: { id: true },
-    });
-
-    if (existing) {
-      res.status(409).json({ message: "Taka stacja już jest na liście." });
-      return;
-    }
-
-    const created = await prisma.fuelStation.create({
-      data: { userId: req.user.id, name },
-      select: stationFields,
-    });
-
-    res.status(201).json(serializeStation(created));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się dodać stacji." });
+  if (existing) {
+    res.status(409).json({ message: "Taka stacja już jest na liście." });
+    return;
   }
+
+  const created = await prisma.fuelStation.create({
+    data: { userId: req.user.id, name },
+    select: stationFields,
+  });
+
+  res.status(201).json(serializeStation(created));
 });
 
 stationsRouter.delete("/:id", requireLogin, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+  const id = parseId(req.params.id);
 
-    if (!Number.isInteger(id)) {
-      res.status(400).json({ message: "Nieprawidłowe id." });
-      return;
-    }
+  // Built-in brands have no owner, so they can never match here.
+  const result = await prisma.fuelStation.deleteMany({ where: { id, userId: req.user.id } });
 
-    // Built-in brands have no owner, so they can never match here.
-    const result = await prisma.fuelStation.deleteMany({ where: { id, userId: req.user.id } });
-
-    if (result.count === 0) {
-      res.status(404).json({ message: "Nie znaleziono stacji." });
-      return;
-    }
-
-    res.status(204).end();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Nie udało się usunąć stacji." });
+  if (result.count === 0) {
+    res.status(404).json({ message: "Nie znaleziono stacji." });
+    return;
   }
+
+  res.status(204).end();
 });

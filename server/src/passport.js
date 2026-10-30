@@ -1,12 +1,13 @@
 import passport from "passport";
 import { ExtractJwt, Strategy as JwtStrategy } from "passport-jwt";
 import { prisma } from "./db.js";
+import { env } from "./env.js";
 
 passport.use(
   new JwtStrategy(
     {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.JWT_SECRET,
+      secretOrKey: env.jwtSecret,
     },
     async (payload, done) => {
       try {
