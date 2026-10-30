@@ -74,7 +74,7 @@ photosRouter.get("/cars/:id/photos", requireLogin, async (req, res) => {
 
     res.json(photos.map(serializePhoto));
   } catch (error) {
-    console.error(error);
+    req.log.error(error);
     res.status(500).json({ message: "Nie udało się pobrać zdjęć." });
   }
 });
@@ -147,12 +147,12 @@ photosRouter.post("/cars/:id/photos", requireLogin, receivePhoto, async (req, re
     savedPaths = [];
     res.status(201).json(serializePhoto(photo));
   } catch (error) {
-    console.error(error);
+    req.log.error(error);
     res.status(500).json({ message: "Nie udało się zapisać zdjęcia." });
   } finally {
     // Files without a database row would never be shown or cleaned up.
     if (savedPaths.length > 0) {
-      await removeFiles(savedPaths).catch((error) => console.error(error));
+      await removeFiles(savedPaths).catch((error) => req.log.error(error));
     }
   }
 });
@@ -191,7 +191,7 @@ photosRouter.delete("/photos/:id", requireLogin, async (req, res, next) => {
 
     // The row is gone either way; a failed file removal only leaves an orphaned file.
     await removeFiles([photo.storagePath, thumbnailPath(photo.storagePath)]).catch((error) =>
-      console.error(error),
+      req.log.error(error),
     );
 
     res.status(204).end();
@@ -201,7 +201,7 @@ photosRouter.delete("/photos/:id", requireLogin, async (req, res, next) => {
       return;
     }
 
-    console.error(error);
+    req.log.error(error);
     res.status(500).json({ message: "Nie udało się usunąć zdjęcia." });
   }
 });

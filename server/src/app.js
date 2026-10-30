@@ -32,7 +32,7 @@ app.get("/health", async (req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ status: "ok" });
   } catch (error) {
-    console.error(error);
+    req.log.error(error);
     res.status(503).json({ status: "database unavailable" });
   }
 });

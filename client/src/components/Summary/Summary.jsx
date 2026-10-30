@@ -2,6 +2,7 @@ import { useOutletContext } from "react-router";
 import { getCostPerKm, getMonthlyCosts, getSummary } from "../../calculations.js";
 import { useGetFuelQuery, useGetServicesQuery } from "../../app/api.js";
 import { consumption, money } from "../../lib/format.js";
+import { isElectric, powertrainTexts } from "../../lib/powertrain.js";
 import { useCountUp } from "../../lib/useCountUp.js";
 import { ExpiryTiles } from "../ExpiryTiles/ExpiryTiles.jsx";
 import { MonthlyChart } from "../MonthlyChart/MonthlyChart.jsx";
@@ -130,12 +131,14 @@ export const Summary = () => {
   const purchase = car.purchasePrice ?? 0;
   const total = summary.totalCost + purchase;
   // The split appears for LPG cars, and for cars that once had LPG fill-ups.
-  const showLpg = car.hasLpg || summary.byFuelType.LPG.count > 0;
+  const electricCar = isElectric(car);
+  const texts = powertrainTexts(car);
+  const showLpg = !electricCar && (car.hasLpg || summary.byFuelType.LPG.count > 0);
   const parts = [
     { key: "purchase", label: "Zakup", amount: purchase, color: "var(--chart-5)" },
     {
       key: "fuel",
-      label: "Paliwo",
+      label: texts.fuelWord,
       amount: summary.fuelCost,
       color: "var(--chart-3)",
       hint: showLpg
@@ -156,30 +159,30 @@ export const Summary = () => {
 
   const perKm = getCostPerKm(fuelQuery.data, serviceQuery.data);
   const months = getMonthlyCosts(fuelQuery.data, serviceQuery.data);
-  const unit = <span className="text-xs font-normal text-muted-foreground">l/100 km</span>;
+  const unit = <span className="text-xs font-normal text-muted-foreground">{texts.consumptionUnit}</span>;
   const tiles = showLpg
     ? [
         {
           label: "Spalanie LPG",
-          value: <>{formatAverage(summary.byFuelType.LPG.averageLitersPer100km)} {unit}</>,
+          value: <>{formatAverage(summary.byFuelType.LPG.averagePer100km)} {unit}</>,
         },
         {
           label: "Spalanie benzyna",
-          value: <>{formatAverage(summary.byFuelType.PETROL.averageLitersPer100km)} {unit}</>,
+          value: <>{formatAverage(summary.byFuelType.PETROL.averagePer100km)} {unit}</>,
         },
       ]
     : [
         {
-          label: "Średnie spalanie",
+          label: texts.consumption,
           value:
-            summary.averageLitersPer100km === null ? (
+            summary.averagePer100km === null ? (
               "—"
             ) : (
-              <>{consumption.format(summary.averageLitersPer100km)} {unit}</>
+              <>{consumption.format(summary.averagePer100km)} {unit}</>
             ),
           hint:
-            summary.averageLitersPer100km === null
-              ? "Potrzebne dwa tankowania z rosnącym przebiegiem."
+            summary.averagePer100km === null
+              ? texts.consumptionNeeds
               : null,
         },
       ];

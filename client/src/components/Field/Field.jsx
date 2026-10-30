@@ -9,7 +9,8 @@ export const Field = ({ id, label, className, error, ...props }) => (
     <Label htmlFor={id}>{label}</Label>
     <Input
       id={id}
-      className="h-11 text-base"
+      // When focus scrolls the input into view, leave room above it so its label stays visible.
+      className="h-11 scroll-mt-10 text-base"
       aria-invalid={error ? true : undefined}
       aria-describedby={error ? `${id}-error` : undefined}
       {...props}

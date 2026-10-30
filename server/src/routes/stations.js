@@ -5,11 +5,12 @@ import { parseId, stationSchema } from "../schemas.js";
 
 export const stationsRouter = Router();
 
-const stationFields = { id: true, name: true, userId: true };
+const stationFields = { id: true, name: true, userId: true, isCharging: true };
 
 const serializeStation = (station) => ({
   id: station.id,
   name: station.name,
+  isCharging: station.isCharging,
   isCustom: station.userId !== null,
 });
 
@@ -25,7 +26,7 @@ export const findUsableStation = async (userId, rawStationId) => {
 
   return prisma.fuelStation.findFirst({
     where: { id: stationId, ...usableBy(userId) },
-    select: { id: true },
+    select: { id: true, isCharging: true },
   });
 };
 
@@ -40,7 +41,7 @@ stationsRouter.get("/", requireLogin, async (req, res) => {
 });
 
 stationsRouter.post("/", requireLogin, async (req, res) => {
-  const { name } = stationSchema.parse(req.body ?? {});
+  const { name, isCharging } = stationSchema.parse(req.body ?? {});
 
   const existing = await prisma.fuelStation.findFirst({
     where: { name: { equals: name, mode: "insensitive" }, ...usableBy(req.user.id) },
@@ -53,7 +54,7 @@ stationsRouter.post("/", requireLogin, async (req, res) => {
   }
 
   const created = await prisma.fuelStation.create({
-    data: { userId: req.user.id, name },
+    data: { userId: req.user.id, name, isCharging },
     select: stationFields,
   });
 

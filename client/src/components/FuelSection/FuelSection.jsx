@@ -11,6 +11,7 @@ import {
 } from "../../app/api.js";
 import { getFuelStats, getSummary } from "../../calculations.js";
 import { limits } from "../../lib/limits.js";
+import { isElectric, powertrainTexts } from "../../lib/powertrain.js";
 import { useMediaQuery } from "../../lib/useMediaQuery.js";
 import { FormPanel } from "../FormPanel/FormPanel.jsx";
 import {
@@ -19,7 +20,7 @@ import {
   formatDate,
   formatRelativeDay,
   kilometers,
-  litersFormat,
+  quantityFormat,
   money,
   plural,
   todayString,
@@ -30,6 +31,7 @@ import { EditButton } from "../EditButton/EditButton.jsx";
 import { Field } from "../Field/Field.jsx";
 import { Icon } from "../Icon/Icon.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
+import { SegmentedToggle } from "../SegmentedToggle/SegmentedToggle.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 import { PriceTrend } from "../PriceTrend/PriceTrend.jsx";
 import { StatTile } from "../StatTile/StatTile.jsx";
@@ -41,35 +43,21 @@ const initialForm = (entry) =>
     ? {
         entryDate: entry.entryDate,
         odometerKm: String(entry.odometerKm),
-        liters: String(entry.liters),
+        quantity: String(entry.quantity),
         totalCost: String(entry.totalCost),
       }
     : {
         entryDate: todayString(),
         odometerKm: "",
-        liters: "",
+        quantity: "",
         totalCost: "",
       };
 
 const fuelTypeLabels = { PETROL: "Benzyna", LPG: "LPG" };
+const fuelTypeOptions = Object.entries(fuelTypeLabels).map(([value, label]) => ({ value, label }));
 
-const FuelTypeToggle = ({ value, onChange }) => (
-  <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1" role="group" aria-label="Rodzaj paliwa">
-    {Object.entries(fuelTypeLabels).map(([fuelType, label]) => (
-      <button
-        key={fuelType}
-        type="button"
-        aria-pressed={value === fuelType}
-        onClick={() => onChange(fuelType)}
-        className="h-11 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-pressed:bg-primary-fill aria-pressed:text-primary-foreground"
-      >
-        {label}
-      </button>
-    ))}
-  </div>
-);
-
-const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelType, onSaved }) => {
+const FuelForm = ({ car, entry, defaultStationId, showFuelType, defaultFuelType, onSaved }) => {
+  const texts = powertrainTexts(car);
   const [form, setForm] = useState(() => initialForm(entry));
   const [fuelType, setFuelType] = useState(entry?.fuelType ?? defaultFuelType);
   const [stationId, setStationId] = useState(entry ? (entry.station?.id ?? null) : defaultStationId);
@@ -77,10 +65,10 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
   const [updateFuel, updateState] = useUpdateFuelMutation();
   const saveState = entry ? updateState : addState;
   // A validation error shows under the field that is wrong; any other error shows above the button.
-  const errors = formErrors(saveState.error, "Nie udało się zapisać tankowania.", [
+  const errors = formErrors(saveState.error, texts.saveError, [
     "entryDate",
     "odometerKm",
-    "liters",
+    "quantity",
     "totalCost",
   ]);
   const errorFor = errors.field;
@@ -99,7 +87,7 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
     const body = {
       entryDate: form.entryDate,
       odometerKm: Number(form.odometerKm),
-      liters: Number(form.liters),
+      quantity: Number(form.quantity),
       totalCost: Number(form.totalCost),
       stationId,
       fuelType,
@@ -109,7 +97,7 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
       if (entry) {
         await updateFuel({ id: entry.id, ...body }).unwrap();
       } else {
-        await addFuel({ carId, ...body }).unwrap();
+        await addFuel({ carId: car.id, ...body }).unwrap();
       }
 
       onSaved();
@@ -122,11 +110,11 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
     <form className="grid grid-cols-2 gap-4" onSubmit={onSubmit}>
       {showFuelType ? (
         <div className="col-span-2">
-          <FuelTypeToggle value={fuelType} onChange={setFuelType} />
+          <SegmentedToggle label="Rodzaj paliwa" options={fuelTypeOptions} value={fuelType} onChange={setFuelType} />
         </div>
       ) : null}
       <div className="col-span-2">
-        <StationPicker value={stationId} onChange={setStationId} />
+        <StationPicker charging={isElectric(car)} value={stationId} onChange={setStationId} />
       </div>
       <Field
         id="fuel-date"
@@ -154,16 +142,16 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
         required
       />
       <Field
-        id="fuel-liters"
-        label="Litry"
-        name="liters"
-        error={errorFor("liters")}
+        id="fuel-quantity"
+        label={texts.quantityLabel}
+        name="quantity"
+        error={errorFor("quantity")}
         type="number"
         inputMode="decimal"
         min="0.01"
-        max={limits.maximumLiters}
+        max={limits.maximumQuantity}
         step="0.01"
-        value={form.liters}
+        value={form.quantity}
         onChange={onChange}
         required
       />
@@ -187,7 +175,7 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
         </p>
       ) : null}
       <Button type="submit" size="lg" className="col-span-2" disabled={saveState.isLoading}>
-        {saveState.isLoading ? "Zapisywanie..." : entry ? "Zapisz zmiany" : "Dodaj tankowanie"}
+        {saveState.isLoading ? "Zapisywanie..." : entry ? "Zapisz zmiany" : texts.add}
       </Button>
     </form>
   );
@@ -206,59 +194,61 @@ export const FuelSection = () => {
   const usageById = {};
 
   for (const item of getSummary(fuel, []).perFill) {
-    usageById[item.id] = item.litersPer100km;
+    usageById[item.id] = item.per100km;
   }
 
   const summary = getSummary(fuel, []);
   const stats = getFuelStats(fuel);
-  const showLpgPrice = car.hasLpg || stats.byFuelType.LPG.series.length > 0;
-  const petrolPrice = stats.byFuelType.PETROL.averagePrice;
+  const electricCar = isElectric(car);
+  const texts = powertrainTexts(car);
+  const showLpgPrice = !electricCar && (car.hasLpg || stats.byFuelType.LPG.series.length > 0);
+  const mainPrice = stats.byFuelType[electricCar ? "ELECTRIC" : "PETROL"].averagePrice;
   const lpgPrice = stats.byFuelType.LPG.averagePrice;
 
   // The newest entry's station is the default for a new fill-up, so regulars tap it only once.
   const fuelForm = active ? (
     <FuelForm
       key={active.entry?.id ?? "new"}
-      carId={car.id}
+      car={car}
       entry={active.entry}
       defaultStationId={fuel[0]?.station?.id ?? null}
-      showFuelType={car.hasLpg || active.entry?.fuelType === "LPG"}
-      defaultFuelType={car.hasLpg ? (fuel[0]?.fuelType ?? "PETROL") : "PETROL"}
+      showFuelType={!electricCar && car.hasLpg || active.entry?.fuelType === "LPG"}
+      defaultFuelType={electricCar ? "ELECTRIC" : car.hasLpg ? (fuel[0]?.fuelType ?? "PETROL") : "PETROL"}
       onSaved={() => setEditing(null)}
     />
   ) : null;
 
   return (
     <section className="grid gap-4">
-      <PageHeader title="Paliwo" description="Każde tankowanie liczy się jako pełny bak." />
-      {fuelQuery.isLoading ? <p className="text-muted-foreground">Wczytywanie tankowań...</p> : null}
+      <PageHeader title={texts.fuelWord} description={texts.pageDescription} />
+      {fuelQuery.isLoading ? <p className="text-muted-foreground">{texts.loading}</p> : null}
       {fuelQuery.isError ? (
         <p role="alert" className="text-sm text-destructive">
-          Nie udało się wczytać tankowań.
+          {texts.loadError}
         </p>
       ) : null}
       {!fuelQuery.isLoading && !fuelQuery.isError && fuel.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Brak tankowań. Dodaj pierwsze przyciskiem +.
+          {texts.empty}
         </p>
       ) : null}
       {fuel.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Wydane na paliwo" value={money.format(summary.fuelCost)} order={1} />
+          <StatTile label={texts.spent} value={money.format(summary.fuelCost)} order={1} />
           <StatTile
-            label="Zatankowano"
-            value={<>{litersFormat.format(stats.totalLiters)} <span className="text-xs font-normal text-muted-foreground">l</span></>}
-            hint={`${fuel.length} ${plural(fuel.length, "tankowanie", "tankowania", "tankowań")}`}
+            label={texts.bought}
+            value={<>{quantityFormat.format(stats.totalQuantity)} <span className="text-xs font-normal text-muted-foreground">{texts.unit}</span></>}
+            hint={`${fuel.length} ${plural(fuel.length, ...texts.count)}`}
             order={2}
           />
           <StatTile
-            label={showLpgPrice ? "Średnia cena benzyny" : "Średnia cena litra"}
-            value={petrolPrice === null ? "—" : <>{money.format(petrolPrice)} <span className="text-xs font-normal text-muted-foreground">/ l</span></>}
+            label={showLpgPrice ? "Średnia cena benzyny" : texts.averagePrice}
+            value={mainPrice === null ? "—" : <>{money.format(mainPrice)} <span className="text-xs font-normal text-muted-foreground">/ {texts.unit}</span></>}
             hint={showLpgPrice && lpgPrice !== null ? `LPG ${money.format(lpgPrice)} / l` : null}
             order={3}
           />
           <StatTile
-            label="Ostatnie tankowanie"
+            label={texts.last}
             value={formatRelativeDay(`${stats.last.entryDate}T00:00:00`)}
             hint={`${kilometers.format(stats.last.odometerKm)} km`}
             order={4}
@@ -267,16 +257,16 @@ export const FuelSection = () => {
       ) : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="grid gap-3">
-      <PriceTrend byFuelType={stats.byFuelType} />
+      <PriceTrend byFuelType={stats.byFuelType} texts={texts} />
       <ul className="grid gap-3">
         {fuel.map((entry, index) => {
-          const litersPer100km = usageById[entry.id];
+          const per100km = usageById[entry.id];
           let usageText = null;
 
-          if (litersPer100km === null) {
+          if (per100km === null) {
             usageText = "Przebieg nie jest większy niż poprzedni.";
-          } else if (litersPer100km !== undefined) {
-            usageText = `${consumption.format(litersPer100km)} l/100 km`;
+          } else if (per100km !== undefined) {
+            usageText = `${consumption.format(per100km)} ${texts.consumptionUnit}`;
           }
 
           return (
@@ -313,25 +303,25 @@ export const FuelSection = () => {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums xl:flex-nowrap xl:justify-end">
-                  {car.hasLpg || entry.fuelType === "LPG" ? (
+                  {!electricCar && (car.hasLpg || entry.fuelType === "LPG") ? (
                     <Badge variant={entry.fuelType === "LPG" ? "default" : "secondary"}>
                       {fuelTypeLabels[entry.fuelType]}
                     </Badge>
                   ) : null}
-                  <span>{litersFormat.format(entry.liters)} l</span>
-                  <span>{money.format(entry.totalCost / entry.liters)}/l</span>
+                  <span>{quantityFormat.format(entry.quantity)} {texts.unit}</span>
+                  <span>{money.format(entry.totalCost / entry.quantity)}/{texts.unit}</span>
                   {usageText ? (
-                    <span className={litersPer100km === null ? "text-warning" : "text-primary"}>
+                    <span className={per100km === null ? "text-warning" : "text-primary"}>
                       {usageText}
                     </span>
                   ) : null}
                 </div>
               </button>
               <div className="flex flex-col pt-2 pr-1 md:flex-row md:pt-0">
-                <EditButton label="Edytuj tankowanie" onClick={() => setEditing({ entry })} />
+                <EditButton label={texts.edit} onClick={() => setEditing({ entry })} />
                 <ConfirmDelete
-                  title="Usunąć tankowanie?"
-                  description={`Tankowanie z ${formatDate(entry.entryDate)} zostanie usunięte.`}
+                  title={texts.deleteTitle}
+                  description={texts.deleteDescription(formatDate(entry.entryDate))}
                   onConfirm={() => deleteFuel(entry.id)}
                   disabled={deleteState.isLoading}
                 />
@@ -343,14 +333,14 @@ export const FuelSection = () => {
       </div>
       {desktop && active ? (
         <FormPanel
-          title={active.entry ? "Edytuj tankowanie" : "Nowe tankowanie"}
+          title={active.entry ? texts.edit : texts.new}
           onReset={editing ? () => setEditing(null) : undefined}
         >
           {fuelForm}
         </FormPanel>
       ) : null}
       </div>
-      <AddButton label="Dodaj tankowanie" onClick={() => setEditing({ entry: null })} />
+      <AddButton label={texts.add} onClick={() => setEditing({ entry: null })} />
       <FormDrawer
         open={editing !== null && !desktop}
         onOpenChange={(open) => {
@@ -358,7 +348,7 @@ export const FuelSection = () => {
             setEditing(null);
           }
         }}
-        title={editing?.entry ? "Edytuj tankowanie" : "Nowe tankowanie"}
+        title={editing?.entry ? texts.edit : texts.new}
       >
         {fuelForm}
       </FormDrawer>

@@ -15,6 +15,7 @@ const carFields = {
   inspectionValidUntil: true,
   ocValidUntil: true,
   acValidUntil: true,
+  powertrain: true,
   hasLpg: true,
   coverPhotoId: true,
   coverPhoto: { select: { storagePath: true } },
@@ -43,7 +44,7 @@ export const findOwnedCar = async (userId, rawCarId) => {
 
   const carId = parsed.data;
 
-  return prisma.car.findFirst({ where: { id: carId, userId }, select: { id: true, name: true } });
+  return prisma.car.findFirst({ where: { id: carId, userId }, select: { id: true, name: true, powertrain: true } });
 };
 
 carsRouter.get("/", requireLogin, async (req, res) => {
@@ -57,10 +58,10 @@ carsRouter.get("/", requireLogin, async (req, res) => {
 });
 
 carsRouter.post("/", requireLogin, async (req, res) => {
-  const { name, purchasePrice } = carCreateSchema.parse(req.body ?? {});
+  const { name, purchasePrice, powertrain } = carCreateSchema.parse(req.body ?? {});
 
   const created = await prisma.car.create({
-    data: { userId: req.user.id, name, purchasePrice },
+    data: { userId: req.user.id, name, purchasePrice, powertrain },
     select: carFields,
   });
 
@@ -130,7 +131,7 @@ carsRouter.delete("/:id", requireLogin, async (req, res) => {
   // Storage is outside the database, so the photo files are removed separately.
   await removeFiles(
     photos.flatMap(({ storagePath }) => [storagePath, thumbnailPath(storagePath)]),
-  ).catch((error) => console.error(error));
+  ).catch((error) => req.log.error(error));
 
   res.status(204).end();
 });

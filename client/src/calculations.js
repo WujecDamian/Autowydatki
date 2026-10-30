@@ -1,4 +1,4 @@
-export const fuelTypes = ["PETROL", "LPG"];
+export const fuelTypes = ["PETROL", "LPG", "ELECTRIC"];
 
 // 0.1 + 0.2 is 0.30000000000000004 in floating point. Money is added in whole grosze
 // (integers are exact) and converted back, so totals are always the sum a person would expect.
@@ -9,11 +9,11 @@ export const sumMoney = (items, amountOf) =>
 // Entries saved before LPG support have no fuel type and are petrol.
 const fuelTypeOf = (entry) => entry.fuelType ?? "PETROL";
 
-// Full-tank method: each fill-up's litres cover the distance since the previous fill of the same fuel.
+// Full-tank method: each fill-up's amount (litres, or kWh for an electric car) covers the distance since the previous fill of the same fuel.
 const getConsumption = (entries) => {
   const sorted = [...entries].sort((a, b) => a.odometerKm - b.odometerKm);
   const perFill = [];
-  let liters = 0;
+  let quantity = 0;
   let distance = 0;
 
   for (let index = 1; index < sorted.length; index += 1) {
@@ -22,19 +22,19 @@ const getConsumption = (entries) => {
     const gap = current.odometerKm - previous.odometerKm;
 
     if (gap <= 0) {
-      perFill.push({ id: current.id, litersPer100km: null });
+      perFill.push({ id: current.id, per100km: null });
       continue;
     }
 
     perFill.push({
       id: current.id,
-      litersPer100km: (current.liters / gap) * 100,
+      per100km: (current.quantity / gap) * 100,
     });
-    liters += current.liters;
+    quantity += current.quantity;
     distance += gap;
   }
 
-  return { perFill, averageLitersPer100km: distance > 0 ? (liters / distance) * 100 : null };
+  return { perFill, averagePer100km: distance > 0 ? (quantity / distance) * 100 : null };
 };
 
 export const getSummary = (fuelEntries, serviceEntries) => {
@@ -47,24 +47,24 @@ export const getSummary = (fuelEntries, serviceEntries) => {
   const perFill = [];
   const byFuelType = {};
 
-  // Petrol and LPG are measured separately; mixing them would compare LPG litres with petrol kilometres.
+  // Each fuel is measured separately; mixing them would compare LPG litres with petrol kilometres.
   for (const fuelType of fuelTypes) {
     const entries = fuelEntries.filter((entry) => fuelTypeOf(entry) === fuelType);
     const consumption = getConsumption(entries);
 
     perFill.push(...consumption.perFill);
     const cost = sumMoney(entries, (entry) => entry.totalCost);
-    const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
+    const quantity = entries.reduce((sum, entry) => sum + entry.quantity, 0);
 
     byFuelType[fuelType] = {
       count: entries.length,
       cost,
-      liters,
-      averageLitersPer100km: consumption.averageLitersPer100km,
+      quantity,
+      averagePer100km: consumption.averagePer100km,
       // Average consumption at the average price paid per litre.
       costPer100km:
-        consumption.averageLitersPer100km !== null && liters > 0
-          ? consumption.averageLitersPer100km * (cost / liters)
+        consumption.averagePer100km !== null && quantity > 0
+          ? consumption.averagePer100km * (cost / quantity)
           : null,
     };
   }
@@ -75,7 +75,8 @@ export const getSummary = (fuelEntries, serviceEntries) => {
     repairCost: roundMoney(serviceCost - inspectionCost),
     inspectionCost,
     totalCost: roundMoney(fuelCost + serviceCost),
-    averageLitersPer100km: byFuelType.PETROL.averageLitersPer100km,
+    // A car has either petrol or electric fill-ups, so one of the two is null.
+    averagePer100km: byFuelType.PETROL.averagePer100km ?? byFuelType.ELECTRIC.averagePer100km,
     byFuelType,
     perFill,
   };
@@ -134,7 +135,7 @@ export const getCostPerKm = (fuelEntries, serviceEntries) => {
   return cost / distance;
 };
 
-// Price per litre over time for each fuel, plus litres bought and the latest fill-up.
+// Price per litre (or kWh) over time for each fuel, plus the amount bought and the latest fill-up.
 export const getFuelStats = (fuelEntries) => {
   const byFuelType = {};
 
@@ -142,13 +143,13 @@ export const getFuelStats = (fuelEntries) => {
     const entries = fuelEntries
       .filter((entry) => fuelTypeOf(entry) === fuelType)
       .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.odometerKm - b.odometerKm);
-    const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
+    const quantity = entries.reduce((sum, entry) => sum + entry.quantity, 0);
     const cost = sumMoney(entries, (entry) => entry.totalCost);
-    const series = entries.map((entry) => ({ date: entry.entryDate, price: entry.totalCost / entry.liters }));
+    const series = entries.map((entry) => ({ date: entry.entryDate, price: entry.totalCost / entry.quantity }));
 
     byFuelType[fuelType] = {
       series,
-      averagePrice: liters > 0 ? cost / liters : null,
+      averagePrice: quantity > 0 ? cost / quantity : null,
       latestPrice: series.length > 0 ? series[series.length - 1].price : null,
     };
   }
@@ -158,7 +159,7 @@ export const getFuelStats = (fuelEntries) => {
   )[0];
 
   return {
-    totalLiters: fuelEntries.reduce((sum, entry) => sum + entry.liters, 0),
+    totalQuantity: fuelEntries.reduce((sum, entry) => sum + entry.quantity, 0),
     byFuelType,
     last: newest ?? null,
   };

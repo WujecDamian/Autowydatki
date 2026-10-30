@@ -12,6 +12,10 @@ export const authRouter = Router();
 
 const googleClient = new OAuth2Client();
 
+// Compared against when the email is unknown, so a missing account takes as long as a wrong
+// password and response time does not reveal which emails are registered.
+const dummyPasswordHash = bcrypt.hashSync("not-a-real-password", 10);
+
 const signToken = (user) =>
   jwt.sign({ id: user.id, email: user.email }, env.jwtSecret, {
     expiresIn: "7d",
@@ -30,18 +34,18 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email } });
     // Google-only accounts have no password, so they cannot log in this way.
-    const passwordMatches = user?.passwordHash
-      ? await bcrypt.compare(password, user.passwordHash)
-      : false;
+    const passwordMatches = await bcrypt.compare(password, user?.passwordHash ?? dummyPasswordHash);
 
-    if (!passwordMatches) {
+    if (!user?.passwordHash || !passwordMatches) {
+      // A fixed "event" makes failed logins easy to count and alert on in the log service.
+      req.log.warn({ event: "login_failed" }, "login failed");
       res.status(401).json({ message: "Nieprawidłowy email lub hasło." });
       return;
     }
 
     res.json({ token: signToken(user) });
   } catch (error) {
-    console.error(error);
+    req.log.error(error);
     res.status(500).json({ message: "Nie udało się zalogować." });
   }
 });
@@ -94,7 +98,7 @@ authRouter.post("/auth/google", loginLimiter, async (req, res) => {
 
     res.json({ token: signToken(user) });
   } catch (error) {
-    console.error(error);
+    req.log.error(error);
     res.status(500).json({ message: "Nie udało się zalogować." });
   }
 });
@@ -108,7 +112,7 @@ authRouter.get("/me", requireLogin, async (req, res) => {
 
     res.json(user);
   } catch (error) {
-    console.error(error);
+    req.log.error(error);
     res.status(500).json({ message: "Nie udało się pobrać konta." });
   }
 });

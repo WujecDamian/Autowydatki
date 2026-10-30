@@ -12,6 +12,7 @@ import {
   testEmailDomain,
   testPassword,
 } from "./setup.js";
+import { env } from "../src/env.js";
 
 let alice;
 let bob;
@@ -23,7 +24,7 @@ const validFuel = (carId) => ({
   carId,
   entryDate: "2026-01-02",
   odometerKm: 1000,
-  liters: 40,
+  quantity: 40,
   totalCost: 250,
 });
 
@@ -267,22 +268,106 @@ describe("one user cannot reach another user's data", () => {
   });
 });
 
+describe("electric cars", () => {
+  let electricCar;
+  let charger;
+  let fuelStation;
+
+  const post = (body) => request(app).post("/api/fuel").set(auth(aliceToken)).send(body);
+
+  before(async () => {
+    const car = await request(app)
+      .post("/api/cars")
+      .set(auth(aliceToken))
+      .send({ name: "Alice's EV", powertrain: "ELECTRIC" });
+    electricCar = car.body;
+
+    const stations = (await request(app).get("/api/stations").set(auth(aliceToken))).body;
+    charger = stations.find((station) => station.isCharging);
+    fuelStation = stations.find((station) => !station.isCharging);
+  });
+
+  it("creates a car with a powertrain and defaults to petrol", async () => {
+    assert.equal(electricCar.powertrain, "ELECTRIC");
+    assert.equal(aliceCar.powertrain, "PETROL");
+
+    const invalid = await request(app)
+      .post("/api/cars")
+      .set(auth(aliceToken))
+      .send({ name: "Steam", powertrain: "STEAM" });
+    assert.equal(invalid.status, 400);
+  });
+
+  it("lists built-in chargers apart from fuel stations", async () => {
+    assert.ok(charger, "there are built-in charging networks");
+    assert.ok(fuelStation, "there are built-in fuel stations");
+  });
+
+  it("saves a charge as ELECTRIC without a fuel type in the request", async () => {
+    const created = await post({ ...validFuel(electricCar.id), quantity: 32.5, stationId: charger.id });
+
+    assert.equal(created.status, 201);
+    assert.equal(created.body.fuelType, "ELECTRIC");
+    assert.equal(created.body.quantity, "32.5");
+    assert.equal(created.body.station.id, charger.id);
+  });
+
+  it("refuses petrol or LPG on an electric car, and electric fuel on a petrol car", async () => {
+    const petrol = await post({ ...validFuel(electricCar.id), fuelType: "PETROL" });
+    assert.equal(petrol.status, 400);
+
+    const electric = await post({ ...validFuel(aliceCar.id), fuelType: "ELECTRIC" });
+    assert.equal(electric.status, 400);
+  });
+
+  it("refuses a fuel station on an electric car and a charger on a petrol car", async () => {
+    const atStation = await post({ ...validFuel(electricCar.id), stationId: fuelStation.id });
+    assert.equal(atStation.status, 400);
+
+    const atCharger = await post({ ...validFuel(aliceCar.id), stationId: charger.id });
+    assert.equal(atCharger.status, 400);
+  });
+
+  it("keeps the same rules when editing an entry", async () => {
+    const created = await post({ ...validFuel(electricCar.id), quantity: 20 });
+    const edited = await request(app)
+      .patch(`/api/fuel/${created.body.id}`)
+      .set(auth(aliceToken))
+      .send({ ...validFuel(electricCar.id), fuelType: "LPG" });
+
+    assert.equal(edited.status, 400);
+  });
+
+  it("creates a custom charger that fuel stations cannot use", async () => {
+    const created = await request(app)
+      .post("/api/stations")
+      .set(auth(aliceToken))
+      .send({ name: "Garage wallbox", isCharging: true });
+
+    assert.equal(created.status, 201);
+    assert.equal(created.body.isCharging, true);
+
+    const plain = await request(app).post("/api/stations").set(auth(aliceToken)).send({ name: "Plain Oil" });
+    assert.equal(plain.body.isCharging, false);
+  });
+});
+
 describe("fuel validation", () => {
   const post = (body) => request(app).post("/api/fuel").set(auth(aliceToken)).send(body);
 
   it("creates, edits and deletes an entry", async () => {
-    const created = await post({ ...validFuel(aliceCar.id), liters: "40,5", fuelType: "LPG" });
+    const created = await post({ ...validFuel(aliceCar.id), quantity: "40,5", fuelType: "LPG" });
 
     assert.equal(created.status, 201);
-    assert.equal(created.body.liters, "40.5");
+    assert.equal(created.body.quantity, "40.5");
     assert.equal(created.body.fuelType, "LPG");
 
     const edited = await request(app)
       .patch(`/api/fuel/${created.body.id}`)
       .set(auth(aliceToken))
-      .send({ ...validFuel(aliceCar.id), liters: 41 });
+      .send({ ...validFuel(aliceCar.id), quantity: 41 });
     assert.equal(edited.status, 200);
-    assert.equal(edited.body.liters, "41");
+    assert.equal(edited.body.quantity, "41");
 
     const removed = await request(app)
       .delete(`/api/fuel/${created.body.id}`)
@@ -293,7 +378,7 @@ describe("fuel validation", () => {
   for (const [name, patch, field] of [
     ["an odometer over the limit", { odometerKm: 99999999999 }, "odometerKm"],
     ["exponent notation", { odometerKm: "1e3" }, "odometerKm"],
-    ["zero liters", { liters: 0 }, "liters"],
+    ["zero quantity", { quantity: 0 }, "quantity"],
     ["a negative cost", { totalCost: -5 }, "totalCost"],
     ["a text cost", { totalCost: "abc" }, "totalCost"],
     ["an unknown fuel type", { fuelType: "DIESEL" }, "fuelType"],
@@ -317,7 +402,7 @@ describe("fuel validation", () => {
   });
 
   it("never answers a bad payload with a 500", async () => {
-    for (const body of [{}, { entryDate: [] }, { liters: {} }, { odometerKm: null }]) {
+    for (const body of [{}, { entryDate: [] }, { quantity: {} }, { odometerKm: null }]) {
       const response = await post({ carId: aliceCar.id, ...body });
 
       assert.ok(response.status < 500, `${JSON.stringify(body)} gave ${response.status}`);
@@ -379,6 +464,18 @@ describe("cars, services, notes and stations validation", () => {
 
     assert.equal(response.status, 201);
     assert.equal(response.body.cost, 0.3);
+  });
+
+  it("accepts the electric car categories", async () => {
+    const response = await alicesApi.post("/api/services", {
+      carId: aliceCar.id,
+      kind: "REPAIR",
+      entryDate: "2026-01-02",
+      odometerKm: 5000,
+      items: [{ category: "Bateria trakcyjna", name: "Diagnostyka baterii (SoH)", cost: 250 }],
+    });
+
+    assert.equal(response.status, 201);
   });
 
   it("rejects a service without items or with a negative cost", async () => {
@@ -448,14 +545,14 @@ describe("database constraints", () => {
     carId: aliceCar.id,
     entryDate: new Date("2026-01-02T00:00:00Z"),
     odometerKm: 1000,
-    liters: 40,
+    quantity: 40,
     totalCost: 250,
     ...patch,
   });
 
   for (const [name, patch] of [
-    ["liters over the limit", { liters: 5000 }],
-    ["zero liters", { liters: 0 }],
+    ["quantity over the limit", { quantity: 5000 }],
+    ["zero quantity", { quantity: 0 }],
     ["an odometer over the limit", { odometerKm: 99999999 }],
     ["a negative cost", { totalCost: -1 }],
     ["a cost over the limit", { totalCost: 999999 }],
@@ -464,6 +561,33 @@ describe("database constraints", () => {
       await assert.rejects(prisma.fuelEntry.create({ data: row(patch) }));
     });
   }
+});
+
+describe("read-only demo account", () => {
+  const withDemoReadOnly = async (run) => {
+    env.demoReadOnly = true;
+    try {
+      await run(await login(env.adminEmail, env.adminPassword));
+    } finally {
+      env.demoReadOnly = false;
+    }
+  };
+
+  it("lets the admin read but not write when enabled", () =>
+    withDemoReadOnly(async (adminToken) => {
+      const read = await request(app).get("/api/cars").set(auth(adminToken));
+      const write = await request(app).post("/api/cars").set(auth(adminToken)).send({ name: "x" });
+
+      assert.equal(read.status, 200);
+      assert.equal(write.status, 403);
+      assert.equal(write.body.code, "DEMO_READ_ONLY");
+    }));
+
+  it("does not affect other users", () =>
+    withDemoReadOnly(async () => {
+      const write = await request(app).post("/api/cars").set(auth(aliceToken)).send({ name: "Second" });
+      assert.equal(write.status, 201);
+    }));
 });
 
 describe("rate limiting", () => {

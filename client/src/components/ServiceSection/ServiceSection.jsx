@@ -50,6 +50,7 @@ export const ServiceSection = () => {
     <ServiceForm
       key={active.entry?.id ?? "new"}
       carId={car.id}
+      powertrain={car.powertrain}
       entry={active.entry}
       onSaved={() => setEditing(null)}
     />

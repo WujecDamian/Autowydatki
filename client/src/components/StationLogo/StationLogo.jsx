@@ -1,8 +1,21 @@
+import { Home01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
-import { stationHue, stationLogoUrl } from "../../features/stations/logos.js";
+import { Icon } from "../Icon/Icon.jsx";
+import { homeChargingName, stationHue, stationLogoUrl } from "../../features/stations/logos.js";
 
 // Brand logos sit on a white tile because favicons are designed for light backgrounds.
 export const StationLogo = ({ name, className }) => {
+  if (name === homeChargingName) {
+    return (
+      <span
+        aria-hidden="true"
+        className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white", className)}
+      >
+        <Icon icon={Home01Icon} size={20} />
+      </span>
+    );
+  }
+
   const logoUrl = stationLogoUrl(name);
 
   if (logoUrl) {

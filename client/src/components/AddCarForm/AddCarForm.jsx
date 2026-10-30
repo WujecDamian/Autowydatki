@@ -4,10 +4,17 @@ import { useAddCarMutation } from "../../app/api.js";
 import { formErrors } from "../../lib/format.js";
 import { limits } from "../../lib/limits.js";
 import { Field } from "../Field/Field.jsx";
+import { SegmentedToggle } from "../SegmentedToggle/SegmentedToggle.jsx";
+
+const powertrainOptions = [
+  { value: "PETROL", label: "Spalinowe" },
+  { value: "ELECTRIC", label: "Elektryczne" },
+];
 
 export const AddCarForm = ({ onAdded }) => {
   const [name, setName] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [powertrain, setPowertrain] = useState("PETROL");
   const [addCar, addState] = useAddCarMutation();
   const errors = formErrors(addState.error, "Nie udało się dodać auta.", ["name", "purchasePrice"]);
   const errorMessage = errors.message;
@@ -18,10 +25,12 @@ export const AddCarForm = ({ onAdded }) => {
     try {
       const car = await addCar({
         name,
+        powertrain,
         purchasePrice: purchasePrice === "" ? null : Number(purchasePrice),
       }).unwrap();
       setName("");
       setPurchasePrice("");
+      setPowertrain("PETROL");
       onAdded(car.id);
     } catch {
       // The error message is rendered from the mutation result.
@@ -30,6 +39,7 @@ export const AddCarForm = ({ onAdded }) => {
 
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
+      <SegmentedToggle label="Rodzaj napędu" options={powertrainOptions} value={powertrain} onChange={setPowertrain} />
       <Field
         id="car-name"
         label="Nazwa auta"

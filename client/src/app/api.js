@@ -139,7 +139,7 @@ export const api = createApi({
         entries.map((entry) => ({
           ...entry,
           odometerKm: Number(entry.odometerKm),
-          liters: Number(entry.liters),
+          quantity: Number(entry.quantity),
           totalCost: Number(entry.totalCost),
         })),
       providesTags: ["Fuel"],
@@ -172,10 +172,10 @@ export const api = createApi({
       providesTags: ["Station"],
     }),
     addStation: builder.mutation({
-      query: (name) => ({
+      query: ({ name, isCharging }) => ({
         url: "/stations",
         method: "POST",
-        body: { name },
+        body: { name, isCharging },
       }),
       invalidatesTags: ["Station"],
     }),

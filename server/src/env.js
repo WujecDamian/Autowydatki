@@ -30,6 +30,8 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET,
   adminEmail: process.env.ADMIN_EMAIL,
   adminPassword: process.env.ADMIN_PASSWORD,
+  // The admin account is the public demo: with this on, it can look but not change anything.
+  demoReadOnly: process.env.DEMO_READ_ONLY === "true",
   googleClientId: process.env.GOOGLE_CLIENT_ID,
   port: Number(process.env.PORT) || 3001,
   corsOrigins: (process.env.CORS_ORIGIN || "http://localhost:5173")

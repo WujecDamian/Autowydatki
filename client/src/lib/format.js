@@ -3,7 +3,7 @@ export const money = new Intl.NumberFormat("pl-PL", {
   currency: "PLN",
 });
 
-export const litersFormat = new Intl.NumberFormat("pl-PL", {
+export const quantityFormat = new Intl.NumberFormat("pl-PL", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });

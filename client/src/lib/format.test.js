@@ -26,16 +26,16 @@ describe("errorText", () => {
 });
 
 describe("fieldError", () => {
-  const error = { status: 400, data: { fields: { liters: "Litry muszą być większe od 0." } } };
+  const error = { status: 400, data: { fields: { quantity: "Ilość musi być większa od 0." } } };
 
   it("returns the message for a field", () => {
-    assert.equal(fieldError(error, "liters"), "Litry muszą być większe od 0.");
+    assert.equal(fieldError(error, "quantity"), "Ilość musi być większa od 0.");
   });
 
   it("is empty for other fields and for errors without fields", () => {
     assert.equal(fieldError(error, "totalCost"), "");
-    assert.equal(fieldError({ status: 500 }, "liters"), "");
-    assert.equal(fieldError(undefined, "liters"), "");
+    assert.equal(fieldError({ status: 500 }, "quantity"), "");
+    assert.equal(fieldError(undefined, "quantity"), "");
   });
 });
 
@@ -57,14 +57,14 @@ describe("isSessionExpired", () => {
 describe("formErrors", () => {
   const error = {
     status: 400,
-    data: { message: "Zły litry", fields: { liters: "Zły litry" } },
+    data: { message: "Zły litry", fields: { quantity: "Zły litry" } },
   };
 
   it("hides the general message when the field shows its own", () => {
-    const errors = formErrors(error, "fallback", ["liters", "totalCost"]);
+    const errors = formErrors(error, "fallback", ["quantity", "totalCost"]);
 
     assert.equal(errors.message, "");
-    assert.equal(errors.field("liters"), "Zły litry");
+    assert.equal(errors.field("quantity"), "Zły litry");
   });
 
   it("shows the general message when the failing field has no input", () => {
@@ -74,13 +74,13 @@ describe("formErrors", () => {
   it("shows the general message for errors without fields", () => {
     const serverError = { status: 500, data: { message: "Coś poszło nie tak" } };
 
-    assert.equal(formErrors(serverError, "fallback", ["liters"]).message, "Coś poszło nie tak");
+    assert.equal(formErrors(serverError, "fallback", ["quantity"]).message, "Coś poszło nie tak");
   });
 
   it("is empty when there is no error", () => {
-    const errors = formErrors(undefined, "fallback", ["liters"]);
+    const errors = formErrors(undefined, "fallback", ["quantity"]);
 
     assert.equal(errors.message, "");
-    assert.equal(errors.field("liters"), "");
+    assert.equal(errors.field("quantity"), "");
   });
 });

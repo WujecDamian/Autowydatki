@@ -197,6 +197,7 @@ const CarForm = ({ car }) => {
         value={form.purchasePrice}
         onChange={onChange}
       />
+      {car.powertrain === "ELECTRIC" ? null : (
       <label
         htmlFor="car-has-lpg"
         className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-xl border bg-background/40 px-3"
@@ -214,6 +215,7 @@ const CarForm = ({ car }) => {
           onCheckedChange={(hasLpg) => setForm((current) => ({ ...current, hasLpg }))}
         />
       </label>
+      )}
       </section>
       <div className="grid gap-4 lg:col-span-2">
       {errorMessage ? (

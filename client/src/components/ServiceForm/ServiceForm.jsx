@@ -13,19 +13,18 @@ import {
 } from "@/components/ui/select";
 import { useAddServiceMutation, useUpdateServiceMutation } from "../../app/api.js";
 import {
-  categoryNames,
+  catalogFor,
   inspectionCategory,
   inspectionFeeItem,
   otherCategory,
-  serviceCatalog,
 } from "../../features/services/catalog.js";
 import { formErrors, money, plural, todayString } from "../../lib/format.js";
 import { Field } from "../Field/Field.jsx";
 import { Icon } from "../Icon/Icon.jsx";
 
 const catalogKey = (category, name) => `${category}|${name}`;
-const isInCatalog = (category, name) =>
-  serviceCatalog.some((group) => group.category === category && group.items.includes(name));
+const isInCatalog = (catalog, category, name) =>
+  catalog.some((group) => group.category === category && group.items.includes(name));
 
 let customCounter = 0;
 const nextCustomKey = () => {
@@ -34,9 +33,9 @@ const nextCustomKey = () => {
 };
 
 // Items are kept as { key, category, name, cost, custom } with cost as the input's string.
-const itemsFromEntry = (entry) =>
+const itemsFromEntry = (catalog, entry) =>
   entry.items.map((item) => {
-    const custom = !isInCatalog(item.category, item.name);
+    const custom = !isInCatalog(catalog, item.category, item.name);
 
     return {
       key: custom ? nextCustomKey() : catalogKey(item.category, item.name),
@@ -55,14 +54,14 @@ const feeItem = () => ({
   custom: false,
 });
 
-const initialState = (entry, defaultKind) => {
+const initialState = (catalog, entry, defaultKind) => {
   if (entry) {
     return {
       kind: entry.kind,
       title: entry.title ?? "",
       entryDate: entry.entryDate,
       odometerKm: String(entry.odometerKm),
-      items: itemsFromEntry(entry),
+      items: itemsFromEntry(catalog, entry),
       // Editing never moves the car's inspection date unless a new one is typed in.
       nextInspectionDate: "",
     };
@@ -128,8 +127,10 @@ const KindToggle = ({ kind, onChange }) => (
   </div>
 );
 
-export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) => {
-  const [form, setForm] = useState(() => initialState(entry, defaultKind));
+export const ServiceForm = ({ carId, powertrain, entry, defaultKind = "REPAIR", onSaved }) => {
+  const serviceCatalog = catalogFor(powertrain);
+  const categoryNames = serviceCatalog.map((group) => group.category);
+  const [form, setForm] = useState(() => initialState(serviceCatalog, entry, defaultKind));
   const [openCategories, setOpenCategories] = useState(
     () => new Set(form.items.filter((item) => !item.custom).map((item) => item.category)),
   );

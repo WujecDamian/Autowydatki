@@ -4,13 +4,14 @@ import { formatDate, money } from "../../lib/format.js";
 const lines = [
   { fuelType: "PETROL", label: "Benzyna", color: "var(--chart-3)" },
   { fuelType: "LPG", label: "LPG", color: "var(--chart-1)" },
+  { fuelType: "ELECTRIC", label: "Prąd", color: "var(--chart-2)" },
 ];
 
 const toTime = (date) => Date.parse(`${date}T00:00:00`);
 
-// Price per litre over time for one fuel at a time (petrol and LPG prices differ too much to share
+// Price per litre (kWh for electric cars) over time for one fuel at a time (petrol and LPG prices differ too much to share
 // a scale); only fuels with 2+ fill-ups can be shown.
-export const PriceTrend = ({ byFuelType }) => {
+export const PriceTrend = ({ byFuelType, texts }) => {
   const [chosen, setChosen] = useState(null);
   const options = lines.filter((line) => byFuelType[line.fuelType].series.length >= 2);
 
@@ -41,7 +42,7 @@ export const PriceTrend = ({ byFuelType }) => {
   return (
     <div data-glow="" className="reveal grid gap-4 rounded-3xl border bg-card p-5 sm:p-6" style={{ "--i": 2 }}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-heading text-base font-semibold">Cena za litr</h2>
+        <h2 className="font-heading text-base font-semibold">{texts.priceChart}</h2>
         <div className="flex gap-1 rounded-full bg-muted p-1 text-xs" role="group" aria-label="Rodzaj paliwa">
           {options.map((line) => (
             <button
@@ -60,7 +61,7 @@ export const PriceTrend = ({ byFuelType }) => {
         <svg
           key={active.fuelType}
           role="img"
-          aria-label={`Cena za litr od ${formatDate(new Date(firstTime).toLocaleDateString("sv-SE"))} do ${formatDate(new Date(lastTime).toLocaleDateString("sv-SE"))}`}
+          aria-label={`${texts.priceChart} od ${formatDate(new Date(firstTime).toLocaleDateString("sv-SE"))} do ${formatDate(new Date(lastTime).toLocaleDateString("sv-SE"))}`}
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           className="trend-wipe size-full overflow-visible"
@@ -124,7 +125,7 @@ export const PriceTrend = ({ byFuelType }) => {
               <span
                 key={`${line.fuelType}-${point.date}-${index}`}
                 tabIndex={0}
-                aria-label={`${formatDate(point.date)}: ${money.format(point.price)} za litr`}
+                aria-label={`${formatDate(point.date)}: ${money.format(point.price)} ${texts.priceFor}`}
                 className="group/dot absolute z-10 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none"
                 style={{ left: `${left}%`, top: `${y(point)}%` }}
               >
@@ -135,7 +136,7 @@ export const PriceTrend = ({ byFuelType }) => {
                 <span
                   className={`pointer-events-none absolute bottom-full mb-1 w-max rounded-lg border bg-popover px-2.5 py-1.5 text-center text-xs opacity-0 shadow-lg transition-opacity group-hover/dot:opacity-100 group-focus-visible/dot:opacity-100 ${anchor}`}
                 >
-                  <span className="block font-semibold tabular-nums">{money.format(point.price)} / l</span>
+                  <span className="block font-semibold tabular-nums">{money.format(point.price)} / {texts.unit}</span>
                   <span className="block text-muted-foreground tabular-nums">{formatDate(point.date)}</span>
                 </span>
               </span>

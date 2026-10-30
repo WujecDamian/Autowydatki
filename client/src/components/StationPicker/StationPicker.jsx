@@ -18,6 +18,7 @@ import {
   useGetStationsQuery,
 } from "../../app/api.js";
 import { errorText } from "../../lib/format.js";
+import { powertrainTexts } from "../../lib/powertrain.js";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
 import { StationLogo } from "../StationLogo/StationLogo.jsx";
 
@@ -34,8 +35,11 @@ const StationOption = ({ name }) => (
   </span>
 );
 
-export const StationPicker = ({ value, onChange }) => {
-  const { data: stations = [] } = useGetStationsQuery();
+export const StationPicker = ({ charging = false, value, onChange }) => {
+  const texts = powertrainTexts({ powertrain: charging ? "ELECTRIC" : "PETROL" });
+  const { data: allStations = [] } = useGetStationsQuery();
+  // Fuel stations and chargers share one list; each car type only sees its own.
+  const stations = allStations.filter((station) => station.isCharging === charging);
   const [addStation, addState] = useAddStationMutation();
   const [deleteStation, deleteState] = useDeleteStationMutation();
   const [adding, setAdding] = useState(false);
@@ -43,7 +47,7 @@ export const StationPicker = ({ value, onChange }) => {
   const builtIn = stations.filter((station) => !station.isCustom);
   const custom = stations.filter((station) => station.isCustom);
   const selected = stations.find((station) => station.id === value);
-  const errorMessage = errorText(addState.error, "Nie udało się dodać stacji.");
+  const errorMessage = errorText(addState.error, texts.stationAddError);
 
   const onSelect = (selectedValue) => {
     if (selectedValue === newStation) {
@@ -57,7 +61,7 @@ export const StationPicker = ({ value, onChange }) => {
 
   const onAdd = async () => {
     try {
-      const station = await addStation(name).unwrap();
+      const station = await addStation({ name, isCharging: charging }).unwrap();
       setName("");
       setAdding(false);
       onChange(station.id);
@@ -77,7 +81,7 @@ export const StationPicker = ({ value, onChange }) => {
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="fuel-station">Stacja</Label>
+      <Label htmlFor="fuel-station">{texts.stationLabel}</Label>
       <div className="flex items-center gap-2">
         <Select value={value === null ? noStation : String(value)} onValueChange={onSelect}>
           <SelectTrigger id="fuel-station" className="h-11 w-full px-3 text-base data-[size=default]:h-11">
@@ -85,11 +89,11 @@ export const StationPicker = ({ value, onChange }) => {
           </SelectTrigger>
           <SelectContent position="popper" className="max-h-72">
             <SelectItem value={noStation} className={itemClass}>
-              Bez stacji
+              {texts.noStation}
             </SelectItem>
             <SelectSeparator />
             <SelectGroup>
-              <SelectLabel>Sieci</SelectLabel>
+              <SelectLabel>{texts.stationGroup}</SelectLabel>
               {builtIn.map((station) => (
                 <SelectItem key={station.id} value={String(station.id)} className={itemClass}>
                   <StationOption name={station.name} />
@@ -98,7 +102,7 @@ export const StationPicker = ({ value, onChange }) => {
             </SelectGroup>
             {custom.length > 0 ? (
               <SelectGroup>
-                <SelectLabel>Twoje stacje</SelectLabel>
+                <SelectLabel>{texts.ownStations}</SelectLabel>
                 {custom.map((station) => (
                   <SelectItem key={station.id} value={String(station.id)} className={itemClass}>
                     <StationOption name={station.name} />
@@ -108,14 +112,14 @@ export const StationPicker = ({ value, onChange }) => {
             ) : null}
             <SelectSeparator />
             <SelectItem value={newStation} className={`${itemClass} text-primary`}>
-              + Dodaj własną stację
+              {texts.addStation}
             </SelectItem>
           </SelectContent>
         </Select>
         {selected?.isCustom ? (
           <ConfirmDelete
-            title="Usunąć stację?"
-            description={`„${selected.name}” zniknie z listy. Tankowania z tej stacji zostaną, bez nazwy stacji.`}
+            title={texts.deleteStationTitle}
+            description={`„${selected.name}” zniknie z listy. ${texts.deleteStationNote}`}
             onConfirm={onDelete}
             disabled={deleteState.isLoading}
           />
@@ -125,8 +129,8 @@ export const StationPicker = ({ value, onChange }) => {
         <div className="grid gap-2 rounded-xl border border-dashed p-3">
           <div className="flex gap-2">
             <Input
-              aria-label="Nazwa nowej stacji"
-              placeholder="np. Stacja u Kowalskiego"
+              aria-label={texts.stationName}
+              placeholder={texts.stationPlaceholder}
               className="h-11 text-base"
               maxLength={40}
               value={name}

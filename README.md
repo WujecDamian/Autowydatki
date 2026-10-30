@@ -6,7 +6,7 @@ Aplikacja webowa do liczenia kosztów utrzymania auta: tankowania, spalanie, ser
 
 ## Co potrafi
 
-- Wiele aut na jednym koncie, osobne tankowania benzyny i LPG, spalanie i koszt na 100 km.
+- Wiele aut na jednym koncie, osobne tankowania benzyny i LPG, spalanie i koszt na 100 km. Auta elektryczne mają ładowania w kWh, sieci ładowarek i zużycie w kWh/100 km.
 - Serwisy z listą pozycji i sumą kosztów, wykresy miesięcznych wydatków i trendu cen paliwa.
 - Przypomnienia o wygasającym OC, AC i przeglądzie, notatki, zdjęcia aut (automatyczne skalowanie i miniatury).
 - Logowanie emailem i hasłem albo kontem Google.
@@ -58,7 +58,28 @@ Kwoty liczone są w groszach (liczby całkowite), żeby uniknąć błędów typu
 - Prisma (brak SQL injection), `sharp` ponownie koduje zdjęcia (usuwa ukryte dane z pliku).
 - Serwer **nie uruchomi się** w produkcji ze słabym `JWT_SECRET` lub bez `CORS_ORIGIN`.
 - Błędy 500 nie ujawniają szczegółów użytkownikowi, a w logach (pino, JSON) każde żądanie ma `X-Request-Id`, token jest ukrywany.
+- Logowanie zawsze wykonuje `bcrypt.compare` (także dla nieznanego emaila), więc czas odpowiedzi nie zdradza, które konta istnieją.
+- `DEMO_READ_ONLY=true` zamienia publiczne konto demo w konto tylko do odczytu. `DATABASE_CA` włącza weryfikację certyfikatu bazy.
+- Frontend: `client/public/_headers` ustawia CSP, HSTS i pozostałe nagłówki bezpieczeństwa na Cloudflare Pages.
+- Nieudane logowania i trafienia w rate limit trafiają do logów z polem `event` (`login_failed`, `rate_limited`), pod alerty w usłudze logów.
 - `/health` sprawdza także bazę danych (pod monitoring).
+
+## Jak chronię aplikację przed OWASP TOP 10
+
+Lista zgodna z OWASP Top 10:2025.
+
+| # | Zagrożenie | Co robię |
+|---|---|---|
+| A01 | Broken Access Control | każde zapytanie do bazy jest filtrowane po `userId`, a testy sprawdzają, że jeden użytkownik nie odczyta, nie zmieni ani nie usunie danych drugiego. |
+| A02 | Security Misconfiguration | `helmet`, CORS ograniczony do adresu frontendu, nagłówki CSP i HSTS w `_headers`, a serwer nie wystartuje w produkcji ze słabym `JWT_SECRET` lub bez `CORS_ORIGIN`. |
+| A03 | Software Supply Chain Failures | zależności są przypięte w `package-lock.json`, instalowane przez `npm ci`, sprawdzane `npm audit`, a Dependabot co tydzień zgłasza aktualizacje. |
+| A04 | Cryptographic Failures | hasła są hashowane bcryptem, ruch idzie przez HTTPS, połączenie z bazą jest szyfrowane TLS (z weryfikacją certyfikatu po ustawieniu `DATABASE_CA`), a JWT jest podpisany długim sekretem. |
+| A05 | Injection | Prisma wysyła zapytania parametryzowane, zod waliduje każde żądanie, a React domyślnie escapuje wyświetlane dane (brak `dangerouslySetInnerHTML`). |
+| A06 | Insecure Design | walidacja działa w trzech warstwach (przeglądarka, zod, `CHECK` w bazie), API ma rate limiting, a konto demo można przełączyć w tryb tylko do odczytu (`DEMO_READ_ONLY`). |
+| A07 | Authentication Failures | logowanie ma limit 20 prób na 15 minut, identyczny błąd i czas odpowiedzi dla złego hasła i nieznanego emaila, a tokeny Google są weryfikowane po stronie serwera. |
+| A08 | Software or Data Integrity Failures | aplikacja nie deserializuje niezaufanych danych, zdjęcia są ponownie kodowane przez `sharp`, a migracje bazy i testy przechodzą przez CI przy każdym pull requeście. |
+| A09 | Security Logging and Alerting Failures | każde żądanie trafia do logów (pino) z `X-Request-Id`, tokeny są ukrywane, a nieudane logowania i trafienia w rate limit mają pole `event` pod alerty. |
+| A10 | Mishandling of Exceptional Conditions | jeden globalny handler zwraca błędy w jednym formacie bez szczegółów technicznych, a `ErrorBoundary` w Reakcie łapie awarie interfejsu. |
 
 ## Testy i CI
 
@@ -70,40 +91,3 @@ Kwoty liczone są w groszach (liczby całkowite), żeby uniknąć błędów typu
 
 **GitHub Actions** przy każdym pull requeście: walidacja Prisma, migracje na tymczasowym PostgreSQL, wszystkie testy, lint i build frontendu. **Dependabot** co tydzień zgłasza aktualizacje zależności.
 Testy API odmawiają uruchomienia na bazie, której nazwa nie kończy się na `_test`.
-
-## Uruchomienie lokalne
-
-Wymagane: Node.js 22+ i PostgreSQL.
-
-```bash
-createdb autowydatki
-cp server/.env.example server/.env        # uzupełnij zmienne
-cd server && npm install && npm run dev   # stosuje migracje i startuje API
-cd client && npm install && npm run dev   # http://localhost:5173
-```
-
-Testy:
-
-```bash
-cd client && npm test && npm run test:components && npm run lint
-cd server && npm test                                  # bez bazy
-createdb autowydatki_test && DATABASE_URL=postgres://localhost:5432/autowydatki_test npx prisma migrate deploy
-cd server && TEST_DATABASE_URL=postgres://localhost:5432/autowydatki_test npm run test:api
-```
-
-## Wdrożenie
-
-Baza: Supabase, API: Render (`npm start` stosuje migracje, health check `/health`), frontend: Cloudflare Pages (`npm run build`, katalog `dist`).
-Zmienne środowiskowe opisują pliki `server/.env.example` i `client/.env.example`. Najważniejsze:
-
-- Serwer: `DATABASE_URL`, `JWT_SECRET` (min. 32 znaki), `CORS_ORIGIN`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GOOGLE_CLIENT_ID`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET`, opcjonalnie `DATABASE_CA`, `LOG_LEVEL`.
-- Klient (wkompilowane w build): `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`.
-
-Logowanie Google: w Google Cloud Console utwórz *OAuth client ID* (Web application), dodaj adresy frontendu do *Authorized JavaScript origins*. Bez tych zmiennych przycisk Google się nie pokazuje.
-Zdjęcia: w Supabase utwórz publiczny bucket `car-photos`. Bez `SUPABASE_URL` zdjęcia zapisują się lokalnie w `server/uploads/` (tylko do developmentu).
-
-Logo stacji paliw pochodzą z oficjalnych stron marek i służą wyłącznie do rozpoznania stacji.
-
-## Świadome ograniczenia
-
-Nie ma jeszcze testów end-to-end (Playwright) ani zewnętrznego śledzenia błędów (Sentry); token JWT jest w `localStorage`, a limity zapytań są w pamięci jednej instancji. Szczegóły i uzasadnienia: [docs/production-readiness-summary.md](docs/production-readiness-summary.md).

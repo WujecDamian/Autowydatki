@@ -12,23 +12,23 @@ import {
   stationSchema,
 } from "./schemas.js";
 
-const validFuel = { entryDate: "2026-01-02", odometerKm: 1000, liters: 40, totalCost: 250 };
+const validFuel = { entryDate: "2026-01-02", odometerKm: 1000, quantity: 40, totalCost: 250 };
 
 const firstMessage = (result) => result.error.issues[0].message;
 
 describe("fuelSchema", () => {
-  it("accepts a valid entry and defaults the fuel type to PETROL", () => {
+  it("accepts a valid entry and leaves the fuel type to the car", () => {
     const result = fuelSchema.safeParse(validFuel);
 
     assert.equal(result.success, true);
-    assert.equal(result.data.fuelType, "PETROL");
+    assert.equal(result.data.fuelType, undefined);
     assert.equal(result.data.stationId, undefined);
   });
 
   it("accepts numeric strings, including a decimal comma", () => {
-    const result = fuelSchema.safeParse({ ...validFuel, liters: "40,5", odometerKm: "1000" });
+    const result = fuelSchema.safeParse({ ...validFuel, quantity: "40,5", odometerKm: "1000" });
 
-    assert.equal(result.data.liters, 40.5);
+    assert.equal(result.data.quantity, 40.5);
     assert.equal(result.data.odometerKm, 1000);
   });
 
@@ -42,11 +42,11 @@ describe("fuelSchema", () => {
     ["a fractional odometer", { odometerKm: 10.5 }],
     ["a negative odometer", { odometerKm: -1 }],
     ["an odometer over the limit", { odometerKm: 99999999999 }],
-    ["zero liters", { liters: 0 }],
-    ["liters over the limit", { liters: 5000 }],
+    ["zero quantity", { quantity: 0 }],
+    ["quantity over the limit", { quantity: 5000 }],
     ["a negative cost", { totalCost: -1 }],
     ["a cost over the limit", { totalCost: 1e9 }],
-    ["Infinity", { liters: Infinity }],
+    ["Infinity", { quantity: Infinity }],
     ["a missing cost", { totalCost: undefined }],
     ["an unknown fuel type", { fuelType: "DIESEL" }],
     ["an impossible date", { entryDate: "2026-02-30" }],
@@ -60,10 +60,10 @@ describe("fuelSchema", () => {
   }
 
   it("reports the failing field", () => {
-    const result = fuelSchema.safeParse({ ...validFuel, liters: 0 });
+    const result = fuelSchema.safeParse({ ...validFuel, quantity: 0 });
 
-    assert.deepEqual(result.error.issues[0].path, ["liters"]);
-    assert.equal(firstMessage(result), "Litry muszą być większe od 0.");
+    assert.deepEqual(result.error.issues[0].path, ["quantity"]);
+    assert.equal(firstMessage(result), "Ilość musi być większa od 0.");
   });
 });
 
@@ -71,6 +71,7 @@ describe("carCreateSchema and carUpdateSchema", () => {
   it("trims the name and treats a blank price as none", () => {
     assert.deepEqual(carCreateSchema.parse({ name: "  Golf  ", purchasePrice: "" }), {
       name: "Golf",
+      powertrain: "PETROL",
       purchasePrice: null,
     });
   });

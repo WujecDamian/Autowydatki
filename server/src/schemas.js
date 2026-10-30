@@ -3,10 +3,10 @@ import { HttpError } from "./errors.js";
 import { serviceCategories } from "./serviceCategories.js";
 import { isRealDate } from "./validation.js";
 
-// Column limits: liters DECIMAL(8,2), costs DECIMAL(10,2), purchase price DECIMAL(12,2), INT4 odometer.
+// Column limits: quantity DECIMAL(8,2), costs DECIMAL(10,2), purchase price DECIMAL(12,2), INT4 odometer.
 // The caps are lower than the columns so absurd values are rejected with a clear message.
 export const limits = {
-  maximumLiters: 1000,
+  maximumQuantity: 1000,
   maximumFuelCost: 100000,
   maximumServiceCost: 99999999.99,
   maximumPurchasePrice: 100000000,
@@ -96,17 +96,18 @@ const text = (max, { empty, tooLong }) =>
 // ---- fuel ----
 
 export const fuelSchema = z.object({
+  // Left out, the route picks the car's own fuel.
   fuelType: z.preprocess(
-    (value) => (isBlank(value) ? "PETROL" : value),
-    z.enum(["PETROL", "LPG"], { error: "Nieznany rodzaj paliwa." }),
+    (value) => (isBlank(value) ? undefined : value),
+    z.enum(["PETROL", "LPG", "ELECTRIC"], { error: "Nieznany rodzaj paliwa." }).optional(),
   ),
   entryDate: pastDateField(),
   odometerKm: odometerField,
-  liters: numberField("Litry muszą być większe od 0.").pipe(
+  quantity: numberField("Ilość musi być większa od 0.").pipe(
     z
       .number()
-      .gt(0, "Litry muszą być większe od 0.")
-      .max(limits.maximumLiters, `Litry mogą mieć najwyżej ${limits.maximumLiters}.`),
+      .gt(0, "Ilość musi być większa od 0.")
+      .max(limits.maximumQuantity, `Ilość może wynosić najwyżej ${limits.maximumQuantity}.`),
   ),
   totalCost: numberField("Koszt musi być równy lub większy od 0.").pipe(
     z
@@ -137,6 +138,10 @@ const validityDate = optional(dateField());
 
 export const carCreateSchema = z.object({
   name: carName,
+  powertrain: z
+    .enum(["PETROL", "ELECTRIC"], { error: "Nieznany rodzaj napędu." })
+    .optional()
+    .default("PETROL"),
   purchasePrice: purchasePrice.optional().default(null),
 });
 
@@ -214,6 +219,8 @@ export const stationSchema = z.object({
     empty: "Podaj nazwę stacji.",
     tooLong: "Nazwa stacji jest za długa.",
   }),
+  // A charging point for electric cars rather than a fuel station.
+  isCharging: z.boolean({ error: "Nieprawidłowy rodzaj stacji." }).optional().default(false),
 });
 
 // ---- auth ----

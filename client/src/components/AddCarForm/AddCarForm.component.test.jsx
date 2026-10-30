@@ -42,6 +42,20 @@ describe("AddCarForm", () => {
     expect(request.headers.get("Authorization")).toBe("Bearer test-token");
   });
 
+  it("sends an electric car when Elektryczne is chosen", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(201, { id: 8, name: "Model 3" }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderForm();
+
+    await userEvent.type(screen.getByLabelText("Nazwa auta"), "Model 3");
+    await userEvent.click(screen.getByRole("button", { name: "Elektryczne" }));
+    await userEvent.click(screen.getByRole("button", { name: "Dodaj auto" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = await fetchMock.mock.calls[0][0].json();
+    expect(body.powertrain).toBe("ELECTRIC");
+  });
+
   it("shows the server's field error under the right input", async () => {
     vi.stubGlobal(
       "fetch",

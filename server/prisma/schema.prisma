@@ -32,6 +32,7 @@ model Car {
   inspectionValidUntil DateTime?      @map("inspection_valid_until") @db.Date
   ocValidUntil         DateTime?      @map("oc_valid_until") @db.Date
   acValidUntil         DateTime?      @map("ac_valid_until") @db.Date
+  powertrain           Powertrain     @default(PETROL)
   hasLpg               Boolean        @default(false) @map("has_lpg")
   coverPhotoId         Int?           @unique @map("cover_photo_id")
   coverPhoto           CarPhoto?      @relation("CarCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
@@ -44,10 +45,18 @@ model Car {
   @@map("cars")
 }
 
+// An electric car only has ELECTRIC fuel entries, a petrol car only PETROL and LPG ones.
+enum Powertrain {
+  PETROL
+  ELECTRIC
+}
+
 // A car with an LPG installation fills both; consumption is calculated per fuel.
+// Quantity is litres for PETROL and LPG, kWh for ELECTRIC.
 enum FuelType {
   PETROL
   LPG
+  ELECTRIC
 }
 
 model FuelEntry {
@@ -56,7 +65,7 @@ model FuelEntry {
   carId      Int          @map("car_id")
   entryDate  DateTime     @map("entry_date") @db.Date
   odometerKm Int          @map("odometer_km")
-  liters     Decimal      @db.Decimal(8, 2)
+  quantity   Decimal      @db.Decimal(8, 2)
   totalCost  Decimal      @map("total_cost") @db.Decimal(10, 2)
   stationId  Int?         @map("station_id")
   fuelType   FuelType     @default(PETROL) @map("fuel_type")
@@ -68,11 +77,12 @@ model FuelEntry {
   @@map("fuel_entries")
 }
 
-// Rows without a user are the built-in Polish brands seeded by the migration.
+// Rows without a user are the built-in Polish brands and charging networks seeded by the migration.
 model FuelStation {
   id          Int         @id @default(autoincrement())
   userId      Int?        @map("user_id")
   name        String
+  isCharging  Boolean     @default(false) @map("is_charging")
   user        User?       @relation(fields: [userId], references: [id])
   fuelEntries FuelEntry[]
 

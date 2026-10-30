@@ -32,13 +32,18 @@ passport.use(
 export const requireLogin = (req, res, next) => {
   passport.authenticate("jwt", { session: false }, (error, user) => {
     if (error) {
-      console.error(error);
+      req.log.error(error);
       res.status(500).json({ message: "Nie udało się sprawdzić logowania." });
       return;
     }
 
     if (!user) {
       res.status(401).json({ message: "Zaloguj się." });
+      return;
+    }
+
+    if (env.demoReadOnly && user.email === env.adminEmail && !["GET", "HEAD"].includes(req.method)) {
+      res.status(403).json({ message: "Konto demo jest tylko do podglądu.", code: "DEMO_READ_ONLY" });
       return;
     }
 
