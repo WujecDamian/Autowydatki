@@ -110,9 +110,9 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
         disabled={cars.length === 0}
         className="-ml-2 flex min-w-0 items-center gap-3 rounded-2xl px-2 py-1 text-left transition-colors hover:bg-accent/50 disabled:hover:bg-transparent"
       >
-        <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+        <span className="relative flex h-11 w-[4.5rem] shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
           {selectedCar?.coverThumbUrl ? (
-            <img src={selectedCar.coverThumbUrl} alt="" className="size-full rounded-xl object-cover" />
+            <img src={selectedCar.coverThumbUrl} alt="" className="size-full rounded-full object-cover" />
           ) : (
             <Icon icon={Car01Icon} />
           )}
