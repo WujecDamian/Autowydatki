@@ -146,18 +146,18 @@ export const NotesSection = () => {
       ) : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[26rem_minmax(0,1fr)]">
       <ul className="grid gap-3">
-        {notes.map((note) => {
+        {notes.map((note, index) => {
           const { title, preview } = splitNote(note.body);
 
           return (
-            <li key={note.id}>
+            <li key={note.id} className="reveal" style={{ "--i": index + 1 }}>
               <button
                 type="button"
                 onClick={() => setEditing({ note })}
                 data-glow=""
                 className={cn(
                   "grid w-full gap-1.5 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-accent/40",
-                  note.pinned && "border-primary/30",
+                  note.pinned && "border-primary/30 bg-gradient-to-br from-primary/15 to-card to-70%",
                   desktop && active?.note?.id === note.id && "border-primary/50 bg-primary/10 hover:bg-primary/15",
                 )}
               >

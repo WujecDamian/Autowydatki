@@ -125,7 +125,7 @@ const CarForm = ({ car }) => {
 
   return (
     <form className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6" onSubmit={onSubmit}>
-      <section aria-labelledby="car-dates-title" data-glow="" className="grid gap-4 rounded-2xl border bg-card p-4 lg:p-6">
+      <section aria-labelledby="car-dates-title" data-glow="" style={{ "--i": 2 }} className="reveal grid gap-4 rounded-2xl border bg-card p-4 lg:p-6">
         <h2 id="car-dates-title" className="font-heading font-semibold">
           Terminy
         </h2>
@@ -163,7 +163,7 @@ const CarForm = ({ car }) => {
           );
         })}
       </section>
-      <section aria-labelledby="car-data-title" data-glow="" className="grid gap-4 rounded-2xl border bg-card p-4 lg:p-6">
+      <section aria-labelledby="car-data-title" data-glow="" style={{ "--i": 3 }} className="reveal grid gap-4 rounded-2xl border bg-card p-4 lg:p-6">
         <h2 id="car-data-title" className="font-heading font-semibold">
           Dane auta
         </h2>

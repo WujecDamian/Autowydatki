@@ -143,7 +143,7 @@ export const CarPhotos = ({ car }) => {
   };
 
   return (
-    <section className="grid gap-3">
+    <section className="reveal grid gap-3" style={{ "--i": 1 }}>
       <input
         ref={inputRef}
         type="file"
