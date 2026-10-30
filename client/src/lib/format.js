@@ -58,4 +58,36 @@ export const formatRelativeDay = (isoTimestamp, now = new Date()) => {
   return `${day}.${month}.${then.getFullYear()}`;
 };
 
-export const errorText = (error, fallback) => error?.data?.message || (error ? fallback : "");
+// The API answers { message, code, fields? }. A request that never reached the server
+// has status "FETCH_ERROR" and no data, so it gets its own message.
+export const errorText = (error, fallback) => {
+  if (!error) {
+    return "";
+  }
+
+  if (error.status === "FETCH_ERROR") {
+    return "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.";
+  }
+
+  if (error.status === 429) {
+    return error.data?.message || "Zbyt wiele prób. Spróbuj ponownie za chwilę.";
+  }
+
+  return error.data?.message || fallback;
+};
+
+// The message for one input, when the API says which field was wrong.
+export const fieldError = (error, name) => error?.data?.fields?.[name] ?? "";
+
+// Splits an API error into per-input messages and one general message.
+// `shownFields` are the inputs that display their own error; if the API complained about
+// any other field (a list item, a hidden value), the general message is shown instead.
+export const formErrors = (error, fallback, shownFields) => {
+  const fields = error?.data?.fields;
+  const allShown = Boolean(fields) && Object.keys(fields).every((key) => shownFields.includes(key));
+
+  return {
+    message: allShown ? "" : errorText(error, fallback),
+    field: (name) => fieldError(error, name),
+  };
+};

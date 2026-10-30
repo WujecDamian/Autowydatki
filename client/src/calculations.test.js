@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getCostPerKm, getFuelStats, getMonthlyCosts, getSummary } from "./calculations.js";
+import {
+  getCostPerKm,
+  getFuelStats,
+  getMonthlyCosts,
+  getSummary,
+  roundMoney,
+  sumMoney,
+} from "./calculations.js";
 
 test("25 liters over 500 km is 5 l/100km", () => {
   const summary = getSummary(
@@ -176,4 +183,20 @@ test("fuel cost per 100 km is consumption times the average price per litre", ()
   // 25 l over 500 km is 5 l/100km, and 390 zł for 65 l is 6 zł/l.
   assert.equal(summary.byFuelType.PETROL.costPer100km, 30);
   assert.equal(summary.byFuelType.LPG.costPer100km, null);
+});
+
+test("adds money without floating point noise", () => {
+  assert.equal(sumMoney([{ cost: 0.1 }, { cost: 0.2 }], (item) => item.cost), 0.3);
+  assert.equal(roundMoney(0.1 + 0.2), 0.3);
+});
+
+test("totals fuel and service costs exactly", () => {
+  const fuel = [
+    { entryDate: "2026-01-01", odometerKm: 1, liters: 10, totalCost: 0.1 },
+    { entryDate: "2026-01-02", odometerKm: 2, liters: 10, totalCost: 0.2 },
+  ];
+  const summary = getSummary(fuel, [{ kind: "REPAIR", cost: 0.7 }]);
+
+  assert.equal(summary.fuelCost, 0.3);
+  assert.equal(summary.totalCost, 1);
 });

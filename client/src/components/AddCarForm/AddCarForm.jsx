@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAddCarMutation } from "../../app/api.js";
-import { errorText } from "../../lib/format.js";
+import { formErrors } from "../../lib/format.js";
+import { limits } from "../../lib/limits.js";
 import { Field } from "../Field/Field.jsx";
 
 export const AddCarForm = ({ onAdded }) => {
   const [name, setName] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [addCar, addState] = useAddCarMutation();
-  const errorMessage = errorText(addState.error, "Nie udało się dodać auta.");
+  const errors = formErrors(addState.error, "Nie udało się dodać auta.", ["name", "purchasePrice"]);
+  const errorMessage = errors.message;
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -31,6 +33,8 @@ export const AddCarForm = ({ onAdded }) => {
       <Field
         id="car-name"
         label="Nazwa auta"
+        error={errors.field("name")}
+        maxLength={60}
         placeholder="np. Skoda Octavia"
         value={name}
         onChange={(event) => setName(event.target.value)}
@@ -39,9 +43,11 @@ export const AddCarForm = ({ onAdded }) => {
       <Field
         id="new-car-price"
         label="Cena zakupu (zł)"
+        error={errors.field("purchasePrice")}
         type="number"
         inputMode="decimal"
         min="0"
+        max={limits.maximumPurchasePrice}
         step="0.01"
         value={purchasePrice}
         onChange={(event) => setPurchasePrice(event.target.value)}

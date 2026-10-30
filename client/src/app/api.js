@@ -1,21 +1,39 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { logout } from "../features/auth/authSlice.js";
+import { isSessionExpired } from "../lib/session.js";
 
 const apiUrl = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
+const baseQuery = fetchBaseQuery({
+  baseUrl: `${apiUrl}/api`,
+  prepareHeaders: (headers, { getState }) => {
+    const token = getState().auth.token;
+
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    return headers;
+  },
+});
+
+// Wraps every request: when the server rejects our token, sign out so the login page
+// shows instead of every screen failing with "Zaloguj się".
+const baseQueryWithLogout = async (args, queryApi, extraOptions) => {
+  const result = await baseQuery(args, queryApi, extraOptions);
+
+  if (isSessionExpired(result, queryApi.getState().auth.token)) {
+    queryApi.dispatch(logout());
+    // Drop cached data so the next person to sign in on this browser never sees it.
+    queryApi.dispatch(api.util.resetApiState());
+  }
+
+  return result;
+};
+
 export const api = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({
-    baseUrl: `${apiUrl}/api`,
-    prepareHeaders: (headers, { getState }) => {
-      const token = getState().auth.token;
-
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
-
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithLogout,
   tagTypes: ["Car", "Fuel", "Service", "Station", "Photo", "Note"],
   endpoints: (builder) => ({
     login: builder.mutation({

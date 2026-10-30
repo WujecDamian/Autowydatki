@@ -3,9 +3,21 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 // Label + input pair used by every form; extra props go to the input.
-export const Field = ({ id, label, className, ...props }) => (
+// `error` is the message for this field; it is linked to the input for screen readers.
+export const Field = ({ id, label, className, error, ...props }) => (
   <div className={cn("grid gap-2", className)}>
     <Label htmlFor={id}>{label}</Label>
-    <Input id={id} className="h-11 text-base" {...props} />
+    <Input
+      id={id}
+      className="h-11 text-base"
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${id}-error` : undefined}
+      {...props}
+    />
+    {error ? (
+      <p id={`${id}-error`} className="text-sm text-destructive">
+        {error}
+      </p>
+    ) : null}
   </div>
 );

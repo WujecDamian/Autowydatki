@@ -10,11 +10,12 @@ import {
   useUpdateFuelMutation,
 } from "../../app/api.js";
 import { getFuelStats, getSummary } from "../../calculations.js";
+import { limits } from "../../lib/limits.js";
 import { useMediaQuery } from "../../lib/useMediaQuery.js";
 import { FormPanel } from "../FormPanel/FormPanel.jsx";
 import {
   consumption,
-  errorText,
+  formErrors,
   formatDate,
   formatRelativeDay,
   kilometers,
@@ -75,7 +76,15 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
   const [addFuel, addState] = useAddFuelMutation();
   const [updateFuel, updateState] = useUpdateFuelMutation();
   const saveState = entry ? updateState : addState;
-  const errorMessage = errorText(saveState.error, "Nie udało się zapisać tankowania.");
+  // A validation error shows under the field that is wrong; any other error shows above the button.
+  const errors = formErrors(saveState.error, "Nie udało się zapisać tankowania.", [
+    "entryDate",
+    "odometerKm",
+    "liters",
+    "totalCost",
+  ]);
+  const errorFor = errors.field;
+  const errorMessage = errors.message;
 
   const onChange = (event) => {
     setForm((current) => ({
@@ -123,7 +132,9 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
         id="fuel-date"
         label="Data"
         name="entryDate"
+        error={errorFor("entryDate")}
         type="date"
+        max={todayString()}
         value={form.entryDate}
         onChange={onChange}
         required
@@ -132,9 +143,11 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
         id="fuel-odometer"
         label="Przebieg (km)"
         name="odometerKm"
+        error={errorFor("odometerKm")}
         type="number"
         inputMode="numeric"
         min="0"
+        max={limits.maximumOdometerKm}
         step="1"
         value={form.odometerKm}
         onChange={onChange}
@@ -144,9 +157,11 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
         id="fuel-liters"
         label="Litry"
         name="liters"
+        error={errorFor("liters")}
         type="number"
         inputMode="decimal"
         min="0.01"
+        max={limits.maximumLiters}
         step="0.01"
         value={form.liters}
         onChange={onChange}
@@ -156,9 +171,11 @@ const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelTyp
         id="fuel-cost"
         label="Koszt (zł)"
         name="totalCost"
+        error={errorFor("totalCost")}
         type="number"
         inputMode="decimal"
         min="0"
+        max={limits.maximumFuelCost}
         step="0.01"
         value={form.totalCost}
         onChange={onChange}

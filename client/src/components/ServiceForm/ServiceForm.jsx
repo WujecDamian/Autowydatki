@@ -19,7 +19,7 @@ import {
   otherCategory,
   serviceCatalog,
 } from "../../features/services/catalog.js";
-import { errorText, money, plural, todayString } from "../../lib/format.js";
+import { formErrors, money, plural, todayString } from "../../lib/format.js";
 import { Field } from "../Field/Field.jsx";
 import { Icon } from "../Icon/Icon.jsx";
 
@@ -136,7 +136,13 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
   const [addService, addState] = useAddServiceMutation();
   const [updateService, updateState] = useUpdateServiceMutation();
   const saveState = entry ? updateState : addState;
-  const errorMessage = errorText(saveState.error, "Nie udało się zapisać serwisu.");
+  const errors = formErrors(saveState.error, "Nie udało się zapisać serwisu.", [
+    "entryDate",
+    "odometerKm",
+    "title",
+    "nextInspectionDate",
+  ]);
+  const errorMessage = errors.message;
   const selectedKeys = new Set(form.items.map((item) => item.key));
   const customItems = form.items.filter((item) => item.custom);
   const totalCents = form.items.reduce((sum, item) => sum + toCents(item.cost), 0);
@@ -264,6 +270,7 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
           id="service-date"
           label="Data"
           name="entryDate"
+          error={errors.field("entryDate")}
           type="date"
           value={form.entryDate}
           onChange={setField}
@@ -273,6 +280,7 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
           id="service-odometer"
           label="Przebieg (km)"
           name="odometerKm"
+          error={errors.field("odometerKm")}
           type="number"
           inputMode="numeric"
           min="0"
@@ -285,6 +293,7 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
           id="service-title"
           label="Tytuł (opcjonalnie)"
           name="title"
+          error={errors.field("title")}
           placeholder={form.kind === "INSPECTION" ? "Badanie techniczne" : "np. Przegląd przed zimą"}
           maxLength={80}
           className="col-span-2"
@@ -297,6 +306,7 @@ export const ServiceForm = ({ carId, entry, defaultKind = "REPAIR", onSaved }) =
               id="service-next-inspection"
               label="Badanie ważne do"
               name="nextInspectionDate"
+              error={errors.field("nextInspectionDate")}
               type="date"
               value={nextInspectionDate}
               onChange={setField}

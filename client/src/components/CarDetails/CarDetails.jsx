@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useDeleteCarMutation, useUpdateCarMutation } from "../../app/api.js";
 import { expiryTone, getExpiryStatus } from "../../lib/expiry.js";
-import { errorText, todayString } from "../../lib/format.js";
+import { errorText, formErrors, todayString } from "../../lib/format.js";
 import { CarPhotos } from "../CarPhotos/CarPhotos.jsx";
 import { Field } from "../Field/Field.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
@@ -96,7 +96,14 @@ const CarForm = ({ car }) => {
   const blocker = useUnsavedChangesGuard(dirty);
   const { highlighted, fieldRef } = useHighlightedField();
   const [updateCar, updateState] = useUpdateCarMutation();
-  const errorMessage = errorText(updateState.error, "Nie udało się zapisać auta.");
+  const errors = formErrors(updateState.error, "Nie udało się zapisać auta.", [
+    "name",
+    "purchasePrice",
+    "inspectionValidUntil",
+    "ocValidUntil",
+    "acValidUntil",
+  ]);
+  const errorMessage = errors.message;
   const today = todayString();
 
   const onChange = (event) => {
@@ -145,6 +152,7 @@ const CarForm = ({ car }) => {
                 id={`car-${field}`}
                 label={label}
                 name={field}
+                error={errors.field(field)}
                 type="date"
                 value={form[field]}
                 onChange={onChange}
@@ -171,6 +179,7 @@ const CarForm = ({ car }) => {
         id="car-name-edit"
         label="Nazwa auta"
         name="name"
+        error={errors.field("name")}
         maxLength={60}
         value={form.name}
         onChange={onChange}
@@ -180,6 +189,7 @@ const CarForm = ({ car }) => {
         id="purchase-price"
         label="Cena zakupu (zł)"
         name="purchasePrice"
+        error={errors.field("purchasePrice")}
         type="number"
         inputMode="decimal"
         min="0"

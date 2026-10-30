@@ -1,5 +1,11 @@
 export const fuelTypes = ["PETROL", "LPG"];
 
+// 0.1 + 0.2 is 0.30000000000000004 in floating point. Money is added in whole grosze
+// (integers are exact) and converted back, so totals are always the sum a person would expect.
+export const roundMoney = (value) => Math.round(value * 100) / 100;
+export const sumMoney = (items, amountOf) =>
+  items.reduce((sum, item) => sum + Math.round(amountOf(item) * 100), 0) / 100;
+
 // Entries saved before LPG support have no fuel type and are petrol.
 const fuelTypeOf = (entry) => entry.fuelType ?? "PETROL";
 
@@ -32,11 +38,12 @@ const getConsumption = (entries) => {
 };
 
 export const getSummary = (fuelEntries, serviceEntries) => {
-  const fuelCost = fuelEntries.reduce((sum, entry) => sum + entry.totalCost, 0);
-  const serviceCost = serviceEntries.reduce((sum, entry) => sum + entry.cost, 0);
-  const inspectionCost = serviceEntries
-    .filter((entry) => entry.kind === "INSPECTION")
-    .reduce((sum, entry) => sum + entry.cost, 0);
+  const fuelCost = sumMoney(fuelEntries, (entry) => entry.totalCost);
+  const serviceCost = sumMoney(serviceEntries, (entry) => entry.cost);
+  const inspectionCost = sumMoney(
+    serviceEntries.filter((entry) => entry.kind === "INSPECTION"),
+    (entry) => entry.cost,
+  );
   const perFill = [];
   const byFuelType = {};
 
@@ -46,7 +53,7 @@ export const getSummary = (fuelEntries, serviceEntries) => {
     const consumption = getConsumption(entries);
 
     perFill.push(...consumption.perFill);
-    const cost = entries.reduce((sum, entry) => sum + entry.totalCost, 0);
+    const cost = sumMoney(entries, (entry) => entry.totalCost);
     const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
 
     byFuelType[fuelType] = {
@@ -65,9 +72,9 @@ export const getSummary = (fuelEntries, serviceEntries) => {
   return {
     fuelCost,
     serviceCost,
-    repairCost: serviceCost - inspectionCost,
+    repairCost: roundMoney(serviceCost - inspectionCost),
     inspectionCost,
-    totalCost: fuelCost + serviceCost,
+    totalCost: roundMoney(fuelCost + serviceCost),
     averageLitersPer100km: byFuelType.PETROL.averageLitersPer100km,
     byFuelType,
     perFill,
@@ -95,7 +102,7 @@ export const getMonthlyCosts = (fuelEntries, serviceEntries, now = new Date(), m
       const bucket = buckets.find((item) => item.key === entry.entryDate.slice(0, 7));
 
       if (bucket) {
-        bucket[field] += amountOf(entry);
+        bucket[field] = roundMoney(bucket[field] + amountOf(entry));
       }
     }
   };
@@ -103,7 +110,7 @@ export const getMonthlyCosts = (fuelEntries, serviceEntries, now = new Date(), m
   addTo(fuelEntries, "fuel", (entry) => entry.totalCost);
   addTo(serviceEntries, "service", (entry) => entry.cost);
 
-  return buckets.map((bucket) => ({ ...bucket, total: bucket.fuel + bucket.service }));
+  return buckets.map((bucket) => ({ ...bucket, total: roundMoney(bucket.fuel + bucket.service) }));
 };
 
 // Running cost per driven kilometre: fuel and service over the odometer span of all entries.
@@ -121,8 +128,8 @@ export const getCostPerKm = (fuelEntries, serviceEntries) => {
   }
 
   const cost =
-    fuelEntries.reduce((sum, entry) => sum + entry.totalCost, 0) +
-    serviceEntries.reduce((sum, entry) => sum + entry.cost, 0);
+    sumMoney(fuelEntries, (entry) => entry.totalCost) +
+    sumMoney(serviceEntries, (entry) => entry.cost);
 
   return cost / distance;
 };
@@ -136,7 +143,7 @@ export const getFuelStats = (fuelEntries) => {
       .filter((entry) => fuelTypeOf(entry) === fuelType)
       .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.odometerKm - b.odometerKm);
     const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
-    const cost = entries.reduce((sum, entry) => sum + entry.totalCost, 0);
+    const cost = sumMoney(entries, (entry) => entry.totalCost);
     const series = entries.map((entry) => ({ date: entry.entryDate, price: entry.totalCost / entry.liters }));
 
     byFuelType[fuelType] = {
