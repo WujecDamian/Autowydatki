@@ -52,6 +52,13 @@ export const expiryFields = [
 export const carNeedsAttention = (car, todayString) =>
   expiryFields.some(({ field }) => needsAttention(getExpiryStatus(car[field], todayString)));
 
+// The date closest to (or furthest past) expiry among those that need attention, for a one-line warning.
+export const mostUrgentExpiry = (car, todayString) =>
+  expiryFields
+    .map(({ field, label }) => ({ label, status: getExpiryStatus(car[field], todayString) }))
+    .filter(({ status }) => needsAttention(status))
+    .sort((a, b) => a.status.daysLeft - b.status.daysLeft)[0] ?? null;
+
 // Tailwind classes per level, shared by the dashboard tiles and the car form.
 export const expiryTone = {
   ok: "border-success/30 bg-success/10 text-success",
