@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown01Icon, Car01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { carNeedsAttention, mostUrgentExpiry } from "../../lib/expiry.js";
@@ -6,7 +6,7 @@ import { todayString } from "../../lib/format.js";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { Icon } from "../Icon/Icon.jsx";
 
-const CarCard = ({ car, isSelected, today, onChoose }) => {
+const CarCard = ({ car, isSelected, today, onChoose, alone }) => {
   const urgent = mostUrgentExpiry(car, today);
 
   return (
@@ -15,8 +15,12 @@ const CarCard = ({ car, isSelected, today, onChoose }) => {
       onClick={() => onChoose(car.id)}
       aria-current={isSelected ? "true" : undefined}
       className={cn(
-        "relative block aspect-[16/9] w-full overflow-hidden rounded-3xl border text-left transition-transform active:scale-[0.98]",
-        isSelected ? "border-transparent ring-2 ring-primary" : "border-border",
+        "relative block w-full overflow-hidden rounded-3xl border text-left shadow-lg shadow-black/25 transition-transform active:scale-[0.98]",
+        // A lone card spans the whole drawer, so a cinematic frame keeps it from getting too tall.
+        alone ? "aspect-[21/9]" : "aspect-[16/9]",
+        isSelected
+          ? "border-transparent ring-[3px] ring-primary ring-offset-2 ring-offset-background"
+          : "border-border",
       )}
     >
       {car.coverUrl ? (
@@ -44,6 +48,41 @@ const CarCard = ({ car, isSelected, today, onChoose }) => {
         ) : null}
       </span>
     </button>
+  );
+};
+
+// Cards stay wide: on a phone each takes most of the row (the next one peeks in), on wider screens
+// they share the row while each is at least min-w-96 wide. Past that the row scrolls.
+const CarCarousel = ({ cars, selectedCar, today, onChoose }) => {
+  const listRef = useRef(null);
+
+  // Start with the selected car in view. Set scrollLeft directly: scrollIntoView would also
+  // scroll the drawer mid-animation. The drawer remounts its content on open, so [] is enough.
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const target = list.querySelector("[aria-current]")?.parentElement;
+    if (target) list.scrollLeft = target.offsetLeft - (list.clientWidth - target.offsetWidth) / 2;
+  }, []);
+
+  return (
+    // overflow-x-auto clips vertically too; the padding leaves room for the selection ring and shadow.
+    <ul
+      ref={listRef}
+      aria-label="Auta"
+      className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pt-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {cars.map((car) => (
+        <li key={car.id} className="min-w-[92%] flex-1 snap-start sm:min-w-96">
+          <CarCard
+            car={car}
+            isSelected={car.id === selectedCar?.id}
+            today={today}
+            onChoose={onChoose}
+            alone={cars.length === 1}
+          />
+        </li>
+      ))}
+    </ul>
   );
 };
 
@@ -87,19 +126,8 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
           <Icon icon={ArrowDown01Icon} size={16} className="shrink-0 text-muted-foreground" />
         ) : null}
       </button>
-      <FormDrawer open={open} onOpenChange={setOpen} title="Twoje auta">
-        <ul className="grid gap-3" aria-label="Auta">
-          {cars.map((car) => (
-            <li key={car.id}>
-              <CarCard
-                car={car}
-                isSelected={car.id === selectedCar?.id}
-                today={today}
-                onChoose={choose}
-              />
-            </li>
-          ))}
-        </ul>
+      <FormDrawer open={open} onOpenChange={setOpen} title="Twoje auta" className="max-w-[57rem]">
+        <CarCarousel cars={cars} selectedCar={selectedCar} today={today} onChoose={choose} />
       </FormDrawer>
     </>
   );
