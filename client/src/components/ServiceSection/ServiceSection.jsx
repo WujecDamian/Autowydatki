@@ -2,13 +2,17 @@ import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { useDeleteServiceMutation, useGetServicesQuery } from "../../app/api.js";
-import { formatDate, kilometers, money } from "../../lib/format.js";
+import { getSummary } from "../../calculations.js";
+import { formatDate, formatRelativeDay, kilometers, money } from "../../lib/format.js";
+import { useMediaQuery } from "../../lib/useMediaQuery.js";
+import { FormPanel } from "../FormPanel/FormPanel.jsx";
 import { AddButton } from "../AddButton/AddButton.jsx";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
 import { EditButton } from "../EditButton/EditButton.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 import { ServiceForm } from "../ServiceForm/ServiceForm.jsx";
+import { StatTile } from "../StatTile/StatTile.jsx";
 
 const entryTitle = (entry) => {
   if (entry.title) {
@@ -35,7 +39,21 @@ export const ServiceSection = () => {
   const [deleteService, deleteState] = useDeleteServiceMutation();
   // null: drawer closed, { entry: null }: new entry, { entry }: editing that entry.
   const [editing, setEditing] = useState(null);
+  const desktop = useMediaQuery("(min-width: 64rem)");
+  const active = editing ?? (desktop ? { entry: null } : null);
   const services = serviceQuery.data ?? [];
+  const summary = getSummary([], services);
+  const newest = [...services].sort(
+    (a, b) => b.entryDate.localeCompare(a.entryDate) || b.odometerKm - a.odometerKm,
+  )[0];
+  const serviceForm = active ? (
+    <ServiceForm
+      key={active.entry?.id ?? "new"}
+      carId={car.id}
+      entry={active.entry}
+      onSaved={() => setEditing(null)}
+    />
+  ) : null;
 
   return (
     <section className="grid gap-4">
@@ -53,9 +71,28 @@ export const ServiceSection = () => {
           Brak wpisów. Dodaj pierwszą naprawę albo badanie przyciskiem +.
         </p>
       ) : null}
+      {newest ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Wydane na serwis" value={money.format(summary.serviceCost)} order={1} />
+          <StatTile label="Naprawy" value={money.format(summary.repairCost)} order={2} />
+          <StatTile label="Badania techniczne" value={money.format(summary.inspectionCost)} order={3} />
+          <StatTile
+            label="Ostatni wpis"
+            value={formatRelativeDay(`${newest.entryDate}T00:00:00`)}
+            hint={`${kilometers.format(newest.odometerKm)} km`}
+            order={4}
+          />
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <ul className="grid gap-3">
-        {services.map((entry) => (
-          <li key={entry.id} className="flex items-start gap-1 rounded-2xl border bg-card p-1">
+        {services.map((entry, index) => (
+          <li
+            key={entry.id}
+            data-glow=""
+            style={{ "--i": index + 3 }}
+            className="reveal flex items-start gap-1 rounded-2xl border bg-card p-1 md:items-center"
+          >
             <button
               type="button"
               onClick={() => setEditing({ entry })}
@@ -71,7 +108,7 @@ export const ServiceSection = () => {
                   </Badge>
                   <p className="truncate font-medium">{entryTitle(entry)}</p>
                 </div>
-                <p className="shrink-0 font-heading text-lg font-semibold">
+                <p className="shrink-0 font-heading text-lg font-semibold tabular-nums">
                   {money.format(entry.cost)}
                 </p>
               </div>
@@ -82,7 +119,7 @@ export const ServiceSection = () => {
                 {itemSummary(entry.items)}
               </p>
             </button>
-            <div className="flex flex-col pt-2 pr-1">
+            <div className="flex flex-col pt-2 pr-1 md:flex-row md:pt-0">
               <EditButton label="Edytuj wpis" onClick={() => setEditing({ entry })} />
               <ConfirmDelete
                 title="Usunąć wpis?"
@@ -94,9 +131,18 @@ export const ServiceSection = () => {
           </li>
         ))}
       </ul>
+      {desktop && active ? (
+        <FormPanel
+          title={active.entry ? "Edytuj wpis" : "Nowy wpis serwisowy"}
+          onReset={editing ? () => setEditing(null) : undefined}
+        >
+          {serviceForm}
+        </FormPanel>
+      ) : null}
+      </div>
       <AddButton label="Dodaj wpis serwisowy" onClick={() => setEditing({ entry: null })} />
       <FormDrawer
-        open={editing !== null}
+        open={editing !== null && !desktop}
         onOpenChange={(open) => {
           if (!open) {
             setEditing(null);
@@ -104,14 +150,7 @@ export const ServiceSection = () => {
         }}
         title={editing?.entry ? "Edytuj wpis" : "Nowy wpis serwisowy"}
       >
-        {editing ? (
-          <ServiceForm
-            key={editing.entry?.id ?? "new"}
-            carId={car.id}
-            entry={editing.entry}
-            onSaved={() => setEditing(null)}
-          />
-        ) : null}
+        {serviceForm}
       </FormDrawer>
     </section>
   );

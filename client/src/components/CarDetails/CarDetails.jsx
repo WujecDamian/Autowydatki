@@ -124,7 +124,49 @@ const CarForm = ({ car }) => {
   };
 
   return (
-    <form className="grid gap-4 rounded-2xl border bg-card p-4" onSubmit={onSubmit}>
+    <form className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6" onSubmit={onSubmit}>
+      <section aria-labelledby="car-dates-title" data-glow="" style={{ "--i": 2 }} className="reveal grid gap-4 rounded-2xl border bg-card p-4 lg:p-6">
+        <h2 id="car-dates-title" className="font-heading font-semibold">
+          Terminy
+        </h2>
+        {dateInputs.map(({ field, label }) => {
+          const status = getExpiryStatus(form[field], today);
+
+          return (
+            <div
+              key={field}
+              ref={fieldRef(field)}
+              className={cn(
+                "-m-2 grid gap-2 rounded-xl p-2 ring-2 ring-transparent transition-[background-color,box-shadow] duration-500",
+                highlighted === field && "bg-primary/10 ring-primary",
+              )}
+            >
+              <Field
+                id={`car-${field}`}
+                label={label}
+                name={field}
+                type="date"
+                value={form[field]}
+                onChange={onChange}
+              />
+              {status ? (
+                <p
+                  className={cn(
+                    "w-fit rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                    expiryTone[status.level],
+                  )}
+                >
+                  {status.message}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </section>
+      <section aria-labelledby="car-data-title" data-glow="" style={{ "--i": 3 }} className="reveal grid gap-4 rounded-2xl border bg-card p-4 lg:p-6">
+        <h2 id="car-data-title" className="font-heading font-semibold">
+          Dane auta
+        </h2>
       <Field
         id="car-name-edit"
         label="Nazwa auta"
@@ -162,42 +204,8 @@ const CarForm = ({ car }) => {
           onCheckedChange={(hasLpg) => setForm((current) => ({ ...current, hasLpg }))}
         />
       </label>
-      <div className="grid gap-4 border-t pt-4">
-        <h2 className="font-heading font-semibold">Terminy</h2>
-        {dateInputs.map(({ field, label }) => {
-          const status = getExpiryStatus(form[field], today);
-
-          return (
-            <div
-              key={field}
-              ref={fieldRef(field)}
-              className={cn(
-                "-m-2 grid gap-2 rounded-xl p-2 ring-2 ring-transparent transition-[background-color,box-shadow] duration-500",
-                highlighted === field && "bg-primary/10 ring-primary",
-              )}
-            >
-              <Field
-                id={`car-${field}`}
-                label={label}
-                name={field}
-                type="date"
-                value={form[field]}
-                onChange={onChange}
-              />
-              {status ? (
-                <p
-                  className={cn(
-                    "w-fit rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                    expiryTone[status.level],
-                  )}
-                >
-                  {status.message}
-                </p>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+      </section>
+      <div className="grid gap-4 lg:col-span-2">
       {errorMessage ? (
         <p role="alert" className="text-sm text-destructive">
           {errorMessage}
@@ -215,7 +223,7 @@ const CarForm = ({ car }) => {
           data-unsaved=""
           className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 px-4 md:bottom-6 md:left-24"
         >
-          <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-primary/50 bg-card/95 p-2 pl-4 shadow-lg shadow-black/30 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 rounded-2xl border border-primary/50 bg-card/95 p-2 pl-4 shadow-lg shadow-black/30 backdrop-blur-xl">
             <p className="min-w-0 flex-1 text-sm font-medium">Masz niezapisane zmiany</p>
             <Button type="button" variant="ghost" size="lg" onClick={() => setForm(saved)}>
               Cofnij
@@ -226,6 +234,7 @@ const CarForm = ({ car }) => {
           </div>
         </div>
       ) : null}
+      </div>
       <AlertDialog
         open={blocker.state === "blocked"}
         onOpenChange={(open) => {

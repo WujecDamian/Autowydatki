@@ -4,7 +4,10 @@ import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { store } from "./app/store.js";
 import App from "./App.jsx";
+import { installGlow } from "./lib/glow.js";
 import "./index.css";
+
+installGlow();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

@@ -48,10 +48,17 @@ export const AppLayout = () => {
 
   return (
     <div className="min-h-svh md:grid md:grid-cols-[6rem_1fr]">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="aurora absolute -right-32 top-1/4 size-[32rem] rounded-full bg-primary/15 blur-[110px]" />
+        <div
+          className="aurora absolute -left-24 bottom-0 size-[28rem] rounded-full bg-chart-4/15 blur-[110px]"
+          style={{ animationDelay: "-9s" }}
+        />
+      </div>
       <BottomNav />
       <div className="min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">
         <header className="sticky top-0 z-30 border-b bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 md:px-8">
             <CarSwitcher cars={cars} selectedCar={selectedCar} onSelect={onSelectCar} />
             <div className="flex shrink-0 items-center gap-2">
               <AddCarButton onAdded={onSelectCar} />
@@ -59,7 +66,7 @@ export const AppLayout = () => {
             </div>
           </div>
         </header>
-        <main className="mx-auto grid max-w-3xl gap-6 px-4 py-6">
+        <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:px-8 md:py-8">
           {carsQuery.isLoading ? <p className="text-muted-foreground">Wczytywanie aut...</p> : null}
           {carsQuery.isError ? (
             <p role="alert" className="text-sm text-destructive">

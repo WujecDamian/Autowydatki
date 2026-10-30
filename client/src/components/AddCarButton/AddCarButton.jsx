@@ -24,10 +24,19 @@ export const AddCarButton = ({ onAdded }) => {
         variant="ghost"
         size="icon-lg"
         aria-label="Dodaj auto"
-        className="rounded-full border bg-card/60"
+        className="border bg-card/60 md:hidden"
         onClick={() => setOpen(true)}
       >
         <Icon icon={Add01Icon} size={22} />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="hidden border bg-card/60 md:inline-flex"
+        onClick={() => setOpen(true)}
+      >
+        <Icon icon={Add01Icon} size={18} />
+        Dodaj auto
       </Button>
       <FormDrawer
         open={open}

@@ -11,6 +11,9 @@ import {
   useUpdateNoteMutation,
 } from "../../app/api.js";
 import { errorText, formatRelativeDay } from "../../lib/format.js";
+import { cn } from "@/lib/utils";
+import { useMediaQuery } from "../../lib/useMediaQuery.js";
+import { FormPanel } from "../FormPanel/FormPanel.jsx";
 import { AddButton } from "../AddButton/AddButton.jsx";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
@@ -25,7 +28,7 @@ const splitNote = (body) => {
   return { title, preview: rest.join("\n").trim() };
 };
 
-const NoteForm = ({ carId, note, onDone }) => {
+const NoteForm = ({ carId, note, onDone, focusNew = true }) => {
   const [body, setBody] = useState(note?.body ?? "");
   const [pinned, setPinned] = useState(note?.pinned ?? false);
   const [addNote, addState] = useAddNoteMutation();
@@ -66,11 +69,11 @@ const NoteForm = ({ carId, note, onDone }) => {
         <Textarea
           id="note-body"
           placeholder={"Pierwsza linia to tytuł\nnp. Ciśnienie w oponach: przód 2,3 bar"}
-          className="max-h-[45svh] min-h-40 px-3 py-2.5 text-base md:text-base"
+          className="max-h-[45svh] min-h-40 px-3 py-2.5 text-base md:text-base lg:min-h-56"
           maxLength={maximumBodyLength}
           value={body}
           onChange={(event) => setBody(event.target.value)}
-          autoFocus={!note}
+          autoFocus={focusNew && !note}
           required
         />
         <p className="text-right text-xs text-muted-foreground">
@@ -114,7 +117,18 @@ export const NotesSection = () => {
   const notesQuery = useGetNotesQuery(car.id);
   // null: drawer closed, { note: null }: new note, { note }: editing that note.
   const [editing, setEditing] = useState(null);
+  const desktop = useMediaQuery("(min-width: 64rem)");
+  const active = editing ?? (desktop ? { note: null } : null);
   const notes = notesQuery.data ?? [];
+  const noteForm = active ? (
+    <NoteForm
+      key={active.note?.id ?? "new"}
+      carId={car.id}
+      note={active.note}
+      focusNew={!desktop}
+      onDone={() => setEditing(null)}
+    />
+  ) : null;
 
   return (
     <section className="grid gap-4">
@@ -130,25 +144,27 @@ export const NotesSection = () => {
           Brak notatek. Zapisz np. ciśnienie w oponach, kod radia albo numer do warsztatu.
         </p>
       ) : null}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[26rem_minmax(0,1fr)]">
       <ul className="grid gap-3">
-        {notes.map((note) => {
+        {notes.map((note, index) => {
           const { title, preview } = splitNote(note.body);
 
           return (
-            <li key={note.id}>
+            <li key={note.id} className="reveal" style={{ "--i": index + 1 }}>
               <button
                 type="button"
                 onClick={() => setEditing({ note })}
-                className={
-                  note.pinned
-                    ? "grid w-full gap-1.5 rounded-2xl border border-primary/40 bg-primary/10 p-4 text-left transition-colors hover:bg-primary/15"
-                    : "grid w-full gap-1.5 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-accent/40"
-                }
+                data-glow=""
+                className={cn(
+                  "grid w-full gap-1.5 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-accent/40",
+                  note.pinned && "border-primary/30 bg-gradient-to-br from-primary/15 to-card to-70%",
+                  desktop && active?.note?.id === note.id && "border-primary/50 bg-primary/10 hover:bg-primary/15",
+                )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 font-medium break-words">{title}</p>
                   {note.pinned ? (
-                    <span className="shrink-0 text-primary">
+                    <span className="shrink-0 text-primary-soft">
                       <Icon icon={PinIcon} size={16} />
                       <span className="sr-only">Przypięta</span>
                     </span>
@@ -167,9 +183,18 @@ export const NotesSection = () => {
           );
         })}
       </ul>
+      {desktop && active ? (
+        <FormPanel
+          title={active.note ? "Edytuj notatkę" : "Nowa notatka"}
+          onReset={editing ? () => setEditing(null) : undefined}
+        >
+          {noteForm}
+        </FormPanel>
+      ) : null}
+      </div>
       <AddButton label="Dodaj notatkę" onClick={() => setEditing({ note: null })} />
       <FormDrawer
-        open={editing !== null}
+        open={editing !== null && !desktop}
         onOpenChange={(open) => {
           if (!open) {
             setEditing(null);
@@ -177,14 +202,7 @@ export const NotesSection = () => {
         }}
         title={editing?.note ? "Notatka" : "Nowa notatka"}
       >
-        {editing ? (
-          <NoteForm
-            key={editing.note?.id ?? "new"}
-            carId={car.id}
-            note={editing.note}
-            onDone={() => setEditing(null)}
-          />
-        ) : null}
+        {noteForm}
       </FormDrawer>
     </section>
   );

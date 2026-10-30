@@ -46,11 +46,19 @@ export const getSummary = (fuelEntries, serviceEntries) => {
     const consumption = getConsumption(entries);
 
     perFill.push(...consumption.perFill);
+    const cost = entries.reduce((sum, entry) => sum + entry.totalCost, 0);
+    const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
+
     byFuelType[fuelType] = {
       count: entries.length,
-      cost: entries.reduce((sum, entry) => sum + entry.totalCost, 0),
-      liters: entries.reduce((sum, entry) => sum + entry.liters, 0),
+      cost,
+      liters,
       averageLitersPer100km: consumption.averageLitersPer100km,
+      // Average consumption at the average price paid per litre.
+      costPer100km:
+        consumption.averageLitersPer100km !== null && liters > 0
+          ? consumption.averageLitersPer100km * (cost / liters)
+          : null,
     };
   }
 
@@ -63,5 +71,88 @@ export const getSummary = (fuelEntries, serviceEntries) => {
     averageLitersPer100km: byFuelType.PETROL.averageLitersPer100km,
     byFuelType,
     perFill,
+  };
+};
+
+const monthKey = (year, monthIndex) => `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+
+// Fuel plus service spending for each of the last `months` calendar months, oldest first.
+export const getMonthlyCosts = (fuelEntries, serviceEntries, now = new Date(), months = 6) => {
+  const buckets = [];
+
+  for (let back = months - 1; back >= 0; back -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - back, 1);
+    buckets.push({
+      key: monthKey(date.getFullYear(), date.getMonth()),
+      monthIndex: date.getMonth(),
+      fuel: 0,
+      service: 0,
+    });
+  }
+
+  const addTo = (entries, field, amountOf) => {
+    for (const entry of entries) {
+      const bucket = buckets.find((item) => item.key === entry.entryDate.slice(0, 7));
+
+      if (bucket) {
+        bucket[field] += amountOf(entry);
+      }
+    }
+  };
+
+  addTo(fuelEntries, "fuel", (entry) => entry.totalCost);
+  addTo(serviceEntries, "service", (entry) => entry.cost);
+
+  return buckets.map((bucket) => ({ ...bucket, total: bucket.fuel + bucket.service }));
+};
+
+// Running cost per driven kilometre: fuel and service over the odometer span of all entries.
+export const getCostPerKm = (fuelEntries, serviceEntries) => {
+  const odometers = [...fuelEntries, ...serviceEntries].map((entry) => entry.odometerKm);
+
+  if (odometers.length < 2) {
+    return null;
+  }
+
+  const distance = Math.max(...odometers) - Math.min(...odometers);
+
+  if (distance <= 0) {
+    return null;
+  }
+
+  const cost =
+    fuelEntries.reduce((sum, entry) => sum + entry.totalCost, 0) +
+    serviceEntries.reduce((sum, entry) => sum + entry.cost, 0);
+
+  return cost / distance;
+};
+
+// Price per litre over time for each fuel, plus litres bought and the latest fill-up.
+export const getFuelStats = (fuelEntries) => {
+  const byFuelType = {};
+
+  for (const fuelType of fuelTypes) {
+    const entries = fuelEntries
+      .filter((entry) => fuelTypeOf(entry) === fuelType)
+      .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.odometerKm - b.odometerKm);
+    const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
+    const cost = entries.reduce((sum, entry) => sum + entry.totalCost, 0);
+    const series = entries.map((entry) => ({ date: entry.entryDate, price: entry.totalCost / entry.liters }));
+
+    byFuelType[fuelType] = {
+      series,
+      averagePrice: liters > 0 ? cost / liters : null,
+      latestPrice: series.length > 0 ? series[series.length - 1].price : null,
+    };
+  }
+
+  const newest = [...fuelEntries].sort(
+    (a, b) => b.entryDate.localeCompare(a.entryDate) || b.odometerKm - a.odometerKm,
+  )[0];
+
+  return {
+    totalLiters: fuelEntries.reduce((sum, entry) => sum + entry.liters, 0),
+    byFuelType,
+    last: newest ?? null,
   };
 };
