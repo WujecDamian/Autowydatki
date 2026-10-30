@@ -153,8 +153,8 @@ export const CarPhotos = ({ car }) => {
         onChange={onFiles}
       />
       {car.coverUrl ? (
-        <div className="relative overflow-hidden rounded-3xl border">
-          <img src={car.coverUrl} alt={`Okładka: ${car.name}`} className="aspect-video w-full object-cover" />
+        <div className="group relative overflow-hidden rounded-3xl border" data-glow="">
+          <img src={car.coverUrl} alt={`Okładka: ${car.name}`} className="aspect-video w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 lg:aspect-[21/9]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-primary/10" />
         </div>
       ) : (
@@ -187,18 +187,23 @@ export const CarPhotos = ({ car }) => {
         </p>
       ) : null}
       {photos.length > 0 ? (
-        <ul className="grid grid-cols-3 gap-2">
+        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
           {photos.map((photo, index) => (
             <li key={photo.id}>
               <button
                 type="button"
                 onClick={() => setViewerIndex(index)}
-                className="relative block w-full overflow-hidden rounded-xl"
+                className="group relative block w-full overflow-hidden rounded-xl"
                 aria-label={`Zdjęcie ${index + 1}`}
               >
-                <img src={photo.thumbUrl} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                <img
+                  src={photo.thumbUrl}
+                  alt=""
+                  loading="lazy"
+                  className="aspect-square w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                />
                 {photo.id === car.coverPhotoId ? (
-                  <span className="absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <span className="absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-primary-fill text-primary-foreground">
                     <Icon icon={StarIcon} size={14} />
                     <span className="sr-only">Okładka</span>
                   </span>
