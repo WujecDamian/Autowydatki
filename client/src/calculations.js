@@ -118,3 +118,33 @@ export const getCostPerKm = (fuelEntries, serviceEntries) => {
 
   return cost / distance;
 };
+
+// Price per litre over time for each fuel, plus litres bought and the latest fill-up.
+export const getFuelStats = (fuelEntries) => {
+  const byFuelType = {};
+
+  for (const fuelType of fuelTypes) {
+    const entries = fuelEntries
+      .filter((entry) => fuelTypeOf(entry) === fuelType)
+      .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.odometerKm - b.odometerKm);
+    const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
+    const cost = entries.reduce((sum, entry) => sum + entry.totalCost, 0);
+    const series = entries.map((entry) => ({ date: entry.entryDate, price: entry.totalCost / entry.liters }));
+
+    byFuelType[fuelType] = {
+      series,
+      averagePrice: liters > 0 ? cost / liters : null,
+      latestPrice: series.length > 0 ? series[series.length - 1].price : null,
+    };
+  }
+
+  const newest = [...fuelEntries].sort(
+    (a, b) => b.entryDate.localeCompare(a.entryDate) || b.odometerKm - a.odometerKm,
+  )[0];
+
+  return {
+    totalLiters: fuelEntries.reduce((sum, entry) => sum + entry.liters, 0),
+    byFuelType,
+    last: newest ?? null,
+  };
+};

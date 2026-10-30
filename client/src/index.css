@@ -199,3 +199,13 @@
     animation: aurora-drift 18s ease-in-out infinite;
   }
 }
+
+@keyframes trend-wipe {
+  from { clip-path: inset(-10% 100% -10% 0); }
+  to { clip-path: inset(-10% -2% -10% -2%); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .trend-wipe {
+    animation: trend-wipe 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both;
+  }
+}
