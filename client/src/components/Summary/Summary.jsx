@@ -10,8 +10,36 @@ import { PageHeader } from "../PageHeader/PageHeader.jsx";
 
 const formatAverage = (value) => (value === null ? "—" : consumption.format(value));
 
-const fuelCostHint = (costPer100km) =>
-  costPer100km === null ? null : `Koszt paliwa ${money.format(costPer100km)} / 100 km`;
+// One wide card with petrol and LPG fuel cost per 100 km side by side, split by a line.
+const FuelCostBlock = ({ lpg, petrol }) => (
+  <div
+    data-glow=""
+    style={{ "--i": 4 }}
+    className="reveal grid gap-3 rounded-2xl border bg-card px-5 py-4 sm:col-span-2"
+  >
+    <p className="text-xs text-muted-foreground">Koszt paliwa na 100 km</p>
+    <div className="grid grid-cols-2 divide-x">
+      {[
+        { label: "LPG", value: lpg },
+        { label: "Benzyna", value: petrol },
+      ].map((item, index) => (
+        <div key={item.label} className={`grid gap-1 ${index === 0 ? "pr-5" : "pl-5"}`}>
+          <p className="text-xs text-muted-foreground">{item.label}</p>
+          <p className="font-heading text-xl font-semibold tracking-tight tabular-nums">
+            {item.value === null ? (
+              "—"
+            ) : (
+              <>
+                {money.format(item.value)}{" "}
+                <span className="text-xs font-normal text-muted-foreground">/ 100 km</span>
+              </>
+            )}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const percent = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
@@ -134,12 +162,10 @@ export const Summary = () => {
         {
           label: "Spalanie LPG",
           value: <>{formatAverage(summary.byFuelType.LPG.averageLitersPer100km)} {unit}</>,
-          hint: fuelCostHint(summary.byFuelType.LPG.costPer100km),
         },
         {
           label: "Spalanie benzyna",
           value: <>{formatAverage(summary.byFuelType.PETROL.averageLitersPer100km)} {unit}</>,
-          hint: fuelCostHint(summary.byFuelType.PETROL.costPer100km),
         },
       ]
     : [
@@ -158,16 +184,18 @@ export const Summary = () => {
         },
       ];
 
-  tiles.push({
-    label: "Koszt na 100 km",
-    value:
-      perKm === null ? (
-        "—"
-      ) : (
-        <>{money.format(perKm * 100)} <span className="text-xs font-normal text-muted-foreground">/ 100 km</span></>
-      ),
-    hint: perKm === null ? "Potrzebne wpisy z różnym przebiegiem." : "Paliwo i serwis, bez zakupu.",
-  });
+  if (!showLpg) {
+    tiles.push({
+      label: "Koszt na 100 km",
+      value:
+        perKm === null ? (
+          "—"
+        ) : (
+          <>{money.format(perKm * 100)} <span className="text-xs font-normal text-muted-foreground">/ 100 km</span></>
+        ),
+      hint: perKm === null ? "Potrzebne wpisy z różnym przebiegiem." : "Paliwo i serwis, bez zakupu.",
+    });
+  }
 
   return (
     <section className="grid gap-4 md:gap-6">
@@ -177,10 +205,16 @@ export const Summary = () => {
           <div className="reveal" style={{ "--i": 1 }}>
             <ExpiryTiles car={car} />
           </div>
-          <div className={`grid gap-3 ${tiles.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          <div className="grid gap-3 sm:grid-cols-2">
             {tiles.map((tile, index) => (
               <StatTile key={tile.label} order={index + 2} {...tile} />
             ))}
+            {showLpg ? (
+              <FuelCostBlock
+                lpg={summary.byFuelType.LPG.costPer100km}
+                petrol={summary.byFuelType.PETROL.costPer100km}
+              />
+            ) : null}
           </div>
           <div className="reveal" style={{ "--i": 5 }}>
             <MonthlyChart months={months} />
