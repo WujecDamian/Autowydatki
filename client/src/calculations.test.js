@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getSummary } from "./calculations.js";
+import { getCostPerKm, getMonthlyCosts, getSummary } from "./calculations.js";
 
 test("25 liters over 500 km is 5 l/100km", () => {
   const summary = getSummary(
@@ -103,4 +103,42 @@ test("entries without a fuel type count as petrol", () => {
   assert.equal(summary.byFuelType.PETROL.averageLitersPer100km, 5);
   assert.equal(summary.byFuelType.LPG.count, 0);
   assert.equal(summary.byFuelType.LPG.averageLitersPer100km, null);
+});
+
+test("monthly costs cover the last months, oldest first, and ignore older entries", () => {
+  const months = getMonthlyCosts(
+    [
+      { entryDate: "2026-10-05", totalCost: 200 },
+      { entryDate: "2026-10-20", totalCost: 100 },
+      { entryDate: "2025-01-01", totalCost: 999 },
+    ],
+    [{ entryDate: "2026-08-10", cost: 300 }],
+    new Date(2026, 9, 30),
+    3,
+  );
+
+  assert.deepEqual(
+    months.map((month) => [month.key, month.fuel, month.service, month.total]),
+    [
+      ["2026-08", 0, 300, 300],
+      ["2026-09", 0, 0, 0],
+      ["2026-10", 300, 0, 300],
+    ],
+  );
+});
+
+test("cost per km spreads fuel and service over the odometer span", () => {
+  const perKm = getCostPerKm(
+    [
+      { odometerKm: 10000, totalCost: 200 },
+      { odometerKm: 10500, totalCost: 150 },
+    ],
+    [{ odometerKm: 10200, cost: 150 }],
+  );
+
+  assert.equal(perKm, 1);
+});
+
+test("cost per km needs a distance", () => {
+  assert.equal(getCostPerKm([{ odometerKm: 10000, totalCost: 200 }], []), null);
 });

@@ -1,33 +1,74 @@
 import { useOutletContext } from "react-router";
-import { getSummary } from "../../calculations.js";
+import { getCostPerKm, getMonthlyCosts, getSummary } from "../../calculations.js";
 import { useGetFuelQuery, useGetServicesQuery } from "../../app/api.js";
 import { consumption, money } from "../../lib/format.js";
+import { useCountUp } from "../../lib/useCountUp.js";
+import { CostDonut } from "../CostDonut/CostDonut.jsx";
 import { ExpiryTiles } from "../ExpiryTiles/ExpiryTiles.jsx";
+import { MonthlyChart } from "../MonthlyChart/MonthlyChart.jsx";
+import { StatTile } from "../StatTile/StatTile.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 
 const formatAverage = (value) => (value === null ? "—" : consumption.format(value));
 
-const Tile = ({ label, value, hint }) => (
-  <div data-glow="" className="grid content-start gap-1 rounded-2xl border bg-card px-5 py-4">
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <div className="font-heading text-xl font-semibold tracking-tight tabular-nums">{value}</div>
-    {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-  </div>
-);
-
 const percent = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
 // One row of the cost split: a colour dot, the label, the amount and an optional breakdown.
-const SplitRow = ({ color, label, amount, hint }) => (
+const SplitRow = ({ color, label, amount, share, hint }) => (
   <div className="grid gap-0.5">
     <div className="flex items-center gap-2">
-      <span className={`size-2.5 rounded-full ${color}`} />
-      <span className="flex-1 text-muted-foreground">{label}</span>
+      <span className="size-2.5 rounded-full" style={{ background: color }} />
+      <span className="flex-1 text-muted-foreground">
+        {label} <span className="text-xs tabular-nums">{share}%</span>
+      </span>
       <span className="font-medium tabular-nums">{money.format(amount)}</span>
     </div>
     {hint ? <p className="pl-[18px] text-xs text-muted-foreground tabular-nums">{hint}</p> : null}
   </div>
 );
+
+// The big total: counts up on load, with the split as a donut and a legend.
+const CostHero = ({ car, total, parts }) => {
+  const shown = useCountUp(total);
+
+  return (
+    <div
+      data-glow=""
+      style={{ "--i": 0 }}
+      className="reveal group relative order-first grid gap-6 lg:order-none overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/25 to-card to-60% p-5 sm:p-6 lg:sticky lg:top-24"
+    >
+      {car.coverUrl ? (
+        <>
+          <img
+            src={car.coverUrl}
+            alt=""
+            className="absolute inset-0 size-full scale-125 object-cover opacity-45 blur-3xl saturate-150 transition-transform duration-700 ease-out group-hover:scale-150"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-background/30 via-transparent to-background/60" />
+        </>
+      ) : null}
+      <div className="relative grid gap-1">
+        <p className="text-foreground/80">Łączny koszt auta</p>
+        <p className="font-heading text-4xl font-semibold tracking-tight tabular-nums lg:text-[40px] lg:leading-[44px]">
+          {money.format(shown)}
+        </p>
+      </div>
+      {total > 0 ? (
+        <div className="relative flex justify-center">
+          <CostDonut
+            parts={parts}
+            label={parts.map((part) => `${part.label} ${percent(part.amount, total)}%`).join(", ")}
+          />
+        </div>
+      ) : null}
+      <div className="relative grid gap-2.5">
+        {parts.map(({ key, ...rest }) => (
+          <SplitRow key={key} share={percent(rest.amount, total)} {...rest} />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const Summary = () => {
   const { car } = useOutletContext();
@@ -52,12 +93,12 @@ export const Summary = () => {
   // The split appears for LPG cars, and for cars that once had LPG fill-ups.
   const showLpg = car.hasLpg || summary.byFuelType.LPG.count > 0;
   const parts = [
-    { key: "purchase", label: "Zakup", amount: purchase, color: "bg-chart-5" },
+    { key: "purchase", label: "Zakup", amount: purchase, color: "var(--chart-5)" },
     {
       key: "fuel",
       label: "Paliwo",
       amount: summary.fuelCost,
-      color: "bg-chart-3",
+      color: "var(--chart-3)",
       hint: showLpg
         ? `Benzyna ${money.format(summary.byFuelType.PETROL.cost)} · LPG ${money.format(summary.byFuelType.LPG.cost)}`
         : null,
@@ -66,7 +107,7 @@ export const Summary = () => {
       key: "service",
       label: "Serwis",
       amount: summary.serviceCost,
-      color: "bg-chart-1",
+      color: "var(--chart-1)",
       hint:
         summary.inspectionCost > 0
           ? `Naprawy ${money.format(summary.repairCost)} · badania ${money.format(summary.inspectionCost)}`
@@ -74,86 +115,65 @@ export const Summary = () => {
     },
   ];
 
+  const perKm = getCostPerKm(fuelQuery.data, serviceQuery.data);
+  const months = getMonthlyCosts(fuelQuery.data, serviceQuery.data);
+  const unit = <span className="text-xs font-normal text-muted-foreground">l/100 km</span>;
+  const tiles = showLpg
+    ? [
+        {
+          label: "Spalanie LPG",
+          value: <>{formatAverage(summary.byFuelType.LPG.averageLitersPer100km)} {unit}</>,
+        },
+        {
+          label: "Spalanie benzyna",
+          value: <>{formatAverage(summary.byFuelType.PETROL.averageLitersPer100km)} {unit}</>,
+        },
+      ]
+    : [
+        {
+          label: "Średnie spalanie",
+          value:
+            summary.averageLitersPer100km === null ? (
+              "—"
+            ) : (
+              <>{consumption.format(summary.averageLitersPer100km)} {unit}</>
+            ),
+          hint:
+            summary.averageLitersPer100km === null
+              ? "Potrzebne dwa tankowania z rosnącym przebiegiem."
+              : null,
+        },
+      ];
+
+  tiles.push({
+    label: "Koszt na kilometr",
+    value:
+      perKm === null ? (
+        "—"
+      ) : (
+        <>{money.format(perKm)} <span className="text-xs font-normal text-muted-foreground">/ km</span></>
+      ),
+    hint: perKm === null ? "Potrzebne wpisy z różnym przebiegiem." : "Paliwo i serwis, bez zakupu.",
+  });
+
   return (
     <section className="grid gap-4 md:gap-6">
       <PageHeader title="Pulpit" description={car.name} />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6">
         <div className="grid gap-4">
-          <ExpiryTiles car={car} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            {showLpg ? (
-              <>
-                <Tile
-                  label="Spalanie LPG"
-                  value={<>{formatAverage(summary.byFuelType.LPG.averageLitersPer100km)} <span className="text-xs font-normal text-muted-foreground">l/100 km</span></>}
-                />
-                <Tile
-                  label="Spalanie benzyna"
-                  value={<>{formatAverage(summary.byFuelType.PETROL.averageLitersPer100km)} <span className="text-xs font-normal text-muted-foreground">l/100 km</span></>}
-                />
-              </>
-            ) : (
-              <Tile
-                label="Średnie spalanie"
-                value={
-                  summary.averageLitersPer100km === null ? (
-                    "—"
-                  ) : (
-                    <>{consumption.format(summary.averageLitersPer100km)} <span className="text-xs font-normal text-muted-foreground">l/100 km</span></>
-                  )
-                }
-                hint={
-                  summary.averageLitersPer100km === null
-                    ? "Potrzebne dwa tankowania z rosnącym przebiegiem."
-                    : null
-                }
-              />
-            )}
+          <div className="reveal" style={{ "--i": 1 }}>
+            <ExpiryTiles car={car} />
           </div>
-        </div>
-        <div
-          data-glow=""
-          className="group relative grid gap-5 overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/25 to-card to-60% p-5 sm:p-6"
-        >
-          {car.coverUrl ? (
-            <>
-              <img
-                src={car.coverUrl}
-                alt=""
-                className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-br from-background/85 via-background/70 to-background/85" />
-            </>
-          ) : null}
-          <div className="relative grid gap-1">
-            <p className="text-foreground/80">Łączny koszt auta</p>
-            <p className="font-heading text-4xl font-semibold tracking-tight tabular-nums lg:text-[40px] lg:leading-[44px]">
-              {money.format(total)}
-            </p>
-          </div>
-          {total > 0 ? (
-            <div
-              role="img"
-              aria-label={parts.map((part) => `${part.label} ${percent(part.amount, total)}%`).join(", ")}
-              className="relative flex h-3 gap-[3px]"
-            >
-              {parts
-                .filter((part) => part.amount > 0)
-                .map((part) => (
-                  <span
-                    key={part.key}
-                    className={`rounded-full ${part.color}`}
-                    style={{ flexGrow: part.amount }}
-                  />
-                ))}
-            </div>
-          ) : null}
-          <div className="relative grid gap-2.5">
-            {parts.map((part) => (
-              <SplitRow key={part.key} {...part} />
+          <div className={`grid gap-3 ${tiles.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            {tiles.map((tile, index) => (
+              <StatTile key={tile.label} order={index + 2} {...tile} />
             ))}
           </div>
+          <div className="reveal" style={{ "--i": 5 }}>
+            <MonthlyChart months={months} />
+          </div>
         </div>
+        <CostHero car={car} total={total} parts={parts} />
       </div>
     </section>
   );

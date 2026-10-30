@@ -65,3 +65,56 @@ export const getSummary = (fuelEntries, serviceEntries) => {
     perFill,
   };
 };
+
+const monthKey = (year, monthIndex) => `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+
+// Fuel plus service spending for each of the last `months` calendar months, oldest first.
+export const getMonthlyCosts = (fuelEntries, serviceEntries, now = new Date(), months = 6) => {
+  const buckets = [];
+
+  for (let back = months - 1; back >= 0; back -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - back, 1);
+    buckets.push({
+      key: monthKey(date.getFullYear(), date.getMonth()),
+      monthIndex: date.getMonth(),
+      fuel: 0,
+      service: 0,
+    });
+  }
+
+  const addTo = (entries, field, amountOf) => {
+    for (const entry of entries) {
+      const bucket = buckets.find((item) => item.key === entry.entryDate.slice(0, 7));
+
+      if (bucket) {
+        bucket[field] += amountOf(entry);
+      }
+    }
+  };
+
+  addTo(fuelEntries, "fuel", (entry) => entry.totalCost);
+  addTo(serviceEntries, "service", (entry) => entry.cost);
+
+  return buckets.map((bucket) => ({ ...bucket, total: bucket.fuel + bucket.service }));
+};
+
+// Running cost per driven kilometre: fuel and service over the odometer span of all entries.
+export const getCostPerKm = (fuelEntries, serviceEntries) => {
+  const odometers = [...fuelEntries, ...serviceEntries].map((entry) => entry.odometerKm);
+
+  if (odometers.length < 2) {
+    return null;
+  }
+
+  const distance = Math.max(...odometers) - Math.min(...odometers);
+
+  if (distance <= 0) {
+    return null;
+  }
+
+  const cost =
+    fuelEntries.reduce((sum, entry) => sum + entry.totalCost, 0) +
+    serviceEntries.reduce((sum, entry) => sum + entry.cost, 0);
+
+  return cost / distance;
+};
