@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useOutletContext } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { useBlocker, useLocation, useNavigate, useOutletContext } from "react-router";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -36,8 +36,65 @@ const formFromCar = (car) => ({
   hasLpg: car.hasLpg,
 });
 
+const isSameForm = (a, b) => Object.keys(a).every((key) => a[key] === b[key]);
+
+// Leaving /auto with unsaved changes asks first; deleting the car passes discardChanges to skip that.
+const useUnsavedChangesGuard = (dirty) => {
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty &&
+      currentLocation.pathname !== nextLocation.pathname &&
+      !nextLocation.state?.discardChanges,
+  );
+
+  // Closing or reloading the tab can only get the browser's own prompt.
+  useEffect(() => {
+    if (!dirty) {
+      return;
+    }
+
+    const onBeforeUnload = (event) => event.preventDefault();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  return blocker;
+};
+
+const highlightMs = 1500;
+
+// The dashboard's expiry tiles link here with the date they show, which gets scrolled to and briefly highlighted.
+const useHighlightedField = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [highlighted, setHighlighted] = useState(() => location.state?.highlight ?? null);
+  const refs = useRef({});
+
+  useEffect(() => {
+    if (!highlighted) {
+      return;
+    }
+
+    refs.current[highlighted]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Drop the request from history so a refresh or going back doesn't replay it.
+    navigate(location.pathname, { replace: true, state: null });
+    const timeout = setTimeout(() => setHighlighted(null), highlightMs);
+    return () => clearTimeout(timeout);
+  }, [highlighted, location.pathname, navigate]);
+
+  const fieldRef = (field) => (element) => {
+    refs.current[field] = element;
+  };
+
+  return { highlighted, fieldRef };
+};
+
 const CarForm = ({ car }) => {
-  const [form, setForm] = useState(() => formFromCar(car));
+  const [saved, setSaved] = useState(() => formFromCar(car));
+  const [form, setForm] = useState(saved);
+  const dirty = !isSameForm(form, saved);
+  const blocker = useUnsavedChangesGuard(dirty);
+  const { highlighted, fieldRef } = useHighlightedField();
   const [updateCar, updateState] = useUpdateCarMutation();
   const errorMessage = errorText(updateState.error, "Nie udało się zapisać auta.");
   const today = todayString();
@@ -48,6 +105,7 @@ const CarForm = ({ car }) => {
 
   const onSubmit = async (event) => {
     event.preventDefault();
+    const submitted = form;
 
     try {
       await updateCar({
@@ -59,6 +117,7 @@ const CarForm = ({ car }) => {
         acValidUntil: form.acValidUntil || null,
         hasLpg: form.hasLpg,
       }).unwrap();
+      setSaved(submitted);
     } catch {
       // The error message is rendered from the mutation result.
     }
@@ -109,7 +168,14 @@ const CarForm = ({ car }) => {
           const status = getExpiryStatus(form[field], today);
 
           return (
-            <div key={field} className="grid gap-2">
+            <div
+              key={field}
+              ref={fieldRef(field)}
+              className={cn(
+                "-m-2 grid gap-2 rounded-xl p-2 ring-2 ring-transparent transition-[background-color,box-shadow] duration-500",
+                highlighted === field && "bg-primary/10 ring-primary",
+              )}
+            >
               <Field
                 id={`car-${field}`}
                 label={label}
@@ -137,12 +203,59 @@ const CarForm = ({ car }) => {
           {errorMessage}
         </p>
       ) : null}
-      {updateState.isSuccess && !updateState.isLoading ? (
+      {updateState.isSuccess && !updateState.isLoading && !dirty ? (
         <p className="text-sm text-success">Zapisano.</p>
       ) : null}
-      <Button type="submit" size="lg" disabled={updateState.isLoading}>
+      <Button type="submit" size="lg" disabled={updateState.isLoading || !dirty}>
         {updateState.isLoading ? "Zapisywanie..." : "Zapisz"}
       </Button>
+      {dirty ? (
+        // Pinned above the bottom nav (or at the bottom next to the rail) until the changes are saved or undone.
+        <div
+          data-unsaved=""
+          className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 px-4 md:bottom-6 md:left-24"
+        >
+          <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-primary/50 bg-card/95 p-2 pl-4 shadow-lg shadow-black/30 backdrop-blur-xl">
+            <p className="min-w-0 flex-1 text-sm font-medium">Masz niezapisane zmiany</p>
+            <Button type="button" variant="ghost" size="lg" onClick={() => setForm(saved)}>
+              Cofnij
+            </Button>
+            <Button type="submit" size="lg" disabled={updateState.isLoading}>
+              {updateState.isLoading ? "Zapisywanie..." : "Zapisz"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      <AlertDialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(open) => {
+          if (!open && blocker.state === "blocked") {
+            blocker.reset();
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Wyjść bez zapisywania?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Zmiany w danych auta nie zostały zapisane. Jeśli wyjdziesz teraz, przepadną.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Zostań i zapisz</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                // Keep the dialog from closing itself, which would reset the blocker before it proceeds.
+                event.preventDefault();
+                blocker.proceed();
+              }}
+            >
+              Wyjdź bez zapisywania
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 };
@@ -155,7 +268,7 @@ const DeleteCar = ({ car }) => {
   const onConfirm = async () => {
     try {
       await deleteCar(car.id).unwrap();
-      navigate("/");
+      navigate("/", { state: { discardChanges: true } });
     } catch {
       // The error message is rendered from the mutation result.
     }
@@ -203,7 +316,7 @@ export const CarDetails = () => {
   const { car } = useOutletContext();
 
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-4 has-[[data-unsaved]]:pb-20">
       <PageHeader title={car.name} description="Zdjęcia, dane auta i terminy" />
       <CarPhotos car={car} />
       <CarForm key={car.id} car={car} />
