@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
+import { FuelStationIcon } from "@hugeicons/core-free-icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +23,10 @@ import { AddButton } from "../AddButton/AddButton.jsx";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
 import { EditButton } from "../EditButton/EditButton.jsx";
 import { Field } from "../Field/Field.jsx";
+import { Icon } from "../Icon/Icon.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
+import { StationLogo } from "../StationLogo/StationLogo.jsx";
 import { StationPicker } from "../StationPicker/StationPicker.jsx";
 
 const initialForm = (entry) =>
@@ -213,7 +216,14 @@ export const FuelSection = () => {
                 className="grid min-w-0 flex-1 gap-2 rounded-xl p-3 text-left transition-colors hover:bg-accent/40"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  {entry.station ? (
+                    <StationLogo name={entry.station.name} />
+                  ) : (
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <Icon icon={FuelStationIcon} />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       {entry.station ? entry.station.name : formatDate(entry.entryDate)}
                     </p>

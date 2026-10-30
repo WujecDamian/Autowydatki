@@ -59,3 +59,7 @@ Bez tych zmiennych przycisk Google się nie pokazuje, a logowanie emailem dział
 Bez `SUPABASE_URL` zdjęcia zapisują się lokalnie w `server/uploads/` i są serwowane przez API pod `/api/uploads` – wygodne w developmencie, ale na Render pliki zniknęłyby przy każdym wdrożeniu.
 
 Serwer obraca zdjęcia według EXIF, zmniejsza je do 1600 px (WebP) i robi miniaturę 400×400. Format HEIC z iPhone'a nie jest obsługiwany przez serwer; Safari przy wyborze zdjęcia z galerii zwykle sam zamienia je na JPEG.
+
+### Logo stacji paliw
+
+Logo sieci w `client/public/station-logos/` zostały pobrane jednorazowo z oficjalnych stron marek (favicon / apple-touch-icon) i przeskalowane do 96×96 px. Służą tylko do rozpoznania stacji. Sieci bez dostępnej ikony (Moya, Avia, Huzar, Carrefour) i własne stacje użytkownika mają kolorowy inicjał.
