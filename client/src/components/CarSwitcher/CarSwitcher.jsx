@@ -12,10 +12,11 @@ const CarCard = ({ car, isSelected, today, onChoose, alone }) => {
   return (
     <button
       type="button"
+      data-glow=""
       onClick={() => onChoose(car.id)}
       aria-current={isSelected ? "true" : undefined}
       className={cn(
-        "relative block w-full overflow-hidden rounded-3xl border text-left shadow-lg shadow-black/25 transition-transform active:scale-[0.98]",
+        "group relative block w-full overflow-hidden rounded-3xl border text-left shadow-lg shadow-black/25 transition-transform active:scale-[0.98]",
         // A lone card spans the whole drawer, so a cinematic frame keeps it from getting too tall.
         alone ? "aspect-[21/9]" : "aspect-[16/9]",
         isSelected
@@ -24,7 +25,12 @@ const CarCard = ({ car, isSelected, today, onChoose, alone }) => {
       )}
     >
       {car.coverUrl ? (
-        <img src={car.coverUrl} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
+        <img
+          src={car.coverUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+        />
       ) : (
         <span className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/40 via-primary/10 to-card text-primary/70">
           <Icon icon={Car01Icon} size={64} />
@@ -35,13 +41,13 @@ const CarCard = ({ car, isSelected, today, onChoose, alone }) => {
         <span className="min-w-0 flex-1">
           <span className="block truncate font-heading text-lg font-semibold">{car.name}</span>
           {urgent ? (
-            <span className="block truncate text-xs font-medium text-destructive">
+            <span className="block truncate text-xs font-medium text-destructive-soft">
               {urgent.label}: {urgent.status.message.toLowerCase()}
             </span>
           ) : null}
         </span>
         {isSelected ? (
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-fill text-primary-foreground">
             <Icon icon={Tick02Icon} size={18} />
             <span className="sr-only">Wybrane</span>
           </span>
@@ -102,7 +108,7 @@ export const CarSwitcher = ({ cars, selectedCar, onSelect }) => {
         type="button"
         onClick={() => setOpen(true)}
         disabled={cars.length === 0}
-        className="-ml-2 flex min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-accent/50 disabled:hover:bg-transparent"
+        className="-ml-2 flex min-w-0 items-center gap-3 rounded-2xl px-2 py-1 text-left transition-colors hover:bg-accent/50 disabled:hover:bg-transparent"
       >
         <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
           {selectedCar?.coverThumbUrl ? (

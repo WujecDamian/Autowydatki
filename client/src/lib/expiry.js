@@ -63,6 +63,7 @@ export const mostUrgentExpiry = (car, todayString) =>
 export const expiryTone = {
   ok: "border-success/30 bg-success/10 text-success",
   soon: "border-warning/40 bg-warning/10 text-warning",
-  urgent: "border-destructive/50 bg-destructive/15 text-destructive",
-  expired: "border-destructive/50 bg-destructive/15 text-destructive",
+  urgent: "border-destructive/50 bg-destructive/15 text-destructive-soft",
+  // A solid fill, so an overdue date stands apart from one that is merely close.
+  expired: "border-destructive bg-destructive text-background",
 };
