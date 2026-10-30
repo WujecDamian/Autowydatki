@@ -1,17 +1,25 @@
 import bcrypt from "bcrypt";
-import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { env } from "./env.js";
 import { PrismaClient } from "./generated/prisma/client.ts";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required");
+// Supabase requires TLS; set DATABASE_SSL=false for a local PostgreSQL.
+// Set DATABASE_CA (PEM contents) to verify the server certificate; without it the
+// connection is encrypted but the certificate is not checked.
+const ssl = !env.databaseSsl
+  ? false
+  : process.env.DATABASE_CA
+    ? { ca: process.env.DATABASE_CA.replace(/\\n/g, "\n"), rejectUnauthorized: true }
+    : { rejectUnauthorized: false };
+
+if (env.isProduction && ssl && !ssl.rejectUnauthorized) {
+  console.warn("DATABASE_CA is not set: the database certificate is not verified");
 }
 
-// Supabase requires TLS; set DATABASE_SSL=false for a local PostgreSQL.
 // The timeout turns an unreachable database into an error instead of a silent hang.
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
+  connectionString: env.databaseUrl,
+  ssl,
   connectionTimeoutMillis: 15000,
 });
 
@@ -23,12 +31,8 @@ export const fromDateString = (value) => new Date(`${value}T00:00:00.000Z`);
 
 // Tables come from `prisma migrate deploy`; this only makes sure the admin account exists.
 export const ensureAdminUser = async () => {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-
-  if (!email || !password || !process.env.JWT_SECRET) {
-    throw new Error("ADMIN_EMAIL, ADMIN_PASSWORD, and JWT_SECRET are required");
-  }
+  const email = env.adminEmail;
+  const password = env.adminPassword;
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 

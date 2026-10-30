@@ -64,6 +64,7 @@ model FuelEntry {
   car        Car          @relation(fields: [carId], references: [id], onDelete: Cascade)
   station    FuelStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
 
+  @@index([carId, entryDate])
   @@map("fuel_entries")
 }
 
@@ -97,6 +98,7 @@ model ServiceEntry {
   car        Car           @relation(fields: [carId], references: [id], onDelete: Cascade)
   items      ServiceItem[]
 
+  @@index([carId, entryDate])
   @@map("service_entries")
 }
 
