@@ -115,15 +115,34 @@ export const PriceTrend = ({ byFuelType }) => {
         </svg>
         {drawn.map((line) => {
           const series = byFuelType[line.fuelType].series;
-          const last = series[series.length - 1];
 
-          return (
-            <span
-              key={line.fuelType}
-              className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card"
-              style={{ left: `${x(last)}%`, top: `${y(last)}%`, background: line.color }}
-            />
-          );
+          return series.map((point, index) => {
+            const isLast = index === series.length - 1;
+            const left = x(point);
+            // Near the edges the tooltip anchors to the dot's side so it stays inside the card.
+            const anchor = left < 12 ? "left-0" : left > 88 ? "right-0" : "left-1/2 -translate-x-1/2";
+
+            return (
+              <span
+                key={`${line.fuelType}-${point.date}-${index}`}
+                tabIndex={0}
+                aria-label={`${formatDate(point.date)}: ${money.format(point.price)} za litr`}
+                className="group/dot absolute z-10 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none"
+                style={{ left: `${left}%`, top: `${y(point)}%` }}
+              >
+                <span
+                  className={`rounded-full border-2 border-card transition-transform group-hover/dot:scale-150 group-focus-visible/dot:scale-150 ${isLast ? "size-3" : "size-2.5"}`}
+                  style={{ background: line.color }}
+                />
+                <span
+                  className={`pointer-events-none absolute bottom-full mb-1 w-max rounded-lg border bg-popover px-2.5 py-1.5 text-center text-xs opacity-0 shadow-lg transition-opacity group-hover/dot:opacity-100 group-focus-visible/dot:opacity-100 ${anchor}`}
+                >
+                  <span className="block font-semibold tabular-nums">{money.format(point.price)} / l</span>
+                  <span className="block text-muted-foreground tabular-nums">{formatDate(point.date)}</span>
+                </span>
+              </span>
+            );
+          });
         })}
         <span className="absolute top-0 left-0 -translate-y-1/2 rounded bg-card/80 px-1 text-[11px] text-muted-foreground tabular-nums">
           {money.format(ceiling)}
