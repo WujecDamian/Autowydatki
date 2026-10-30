@@ -3,7 +3,6 @@ import { getCostPerKm, getMonthlyCosts, getSummary } from "../../calculations.js
 import { useGetFuelQuery, useGetServicesQuery } from "../../app/api.js";
 import { consumption, money } from "../../lib/format.js";
 import { useCountUp } from "../../lib/useCountUp.js";
-import { CostDonut } from "../CostDonut/CostDonut.jsx";
 import { ExpiryTiles } from "../ExpiryTiles/ExpiryTiles.jsx";
 import { MonthlyChart } from "../MonthlyChart/MonthlyChart.jsx";
 import { StatTile } from "../StatTile/StatTile.jsx";
@@ -27,7 +26,7 @@ const SplitRow = ({ color, label, amount, share, hint }) => (
   </div>
 );
 
-// The big total: counts up on load, with the split as a donut and a legend.
+// The big total: counts up on load, with the split as a bar and a legend.
 const CostHero = ({ car, total, parts }) => {
   const shown = useCountUp(total);
 
@@ -54,11 +53,20 @@ const CostHero = ({ car, total, parts }) => {
         </p>
       </div>
       {total > 0 ? (
-        <div className="relative flex justify-center">
-          <CostDonut
-            parts={parts}
-            label={parts.map((part) => `${part.label} ${percent(part.amount, total)}%`).join(", ")}
-          />
+        <div
+          role="img"
+          aria-label={parts.map((part) => `${part.label} ${percent(part.amount, total)}%`).join(", ")}
+          className="trend-wipe relative flex h-3 gap-[3px]"
+        >
+          {parts
+            .filter((part) => part.amount > 0)
+            .map((part) => (
+              <span
+                key={part.key}
+                className="rounded-full"
+                style={{ flexGrow: part.amount, background: part.color }}
+              />
+            ))}
         </div>
       ) : null}
       <div className="relative grid gap-2.5">
@@ -146,12 +154,12 @@ export const Summary = () => {
       ];
 
   tiles.push({
-    label: "Koszt na kilometr",
+    label: "Koszt na 100 km",
     value:
       perKm === null ? (
         "—"
       ) : (
-        <>{money.format(perKm)} <span className="text-xs font-normal text-muted-foreground">/ km</span></>
+        <>{money.format(perKm * 100)} <span className="text-xs font-normal text-muted-foreground">/ 100 km</span></>
       ),
     hint: perKm === null ? "Potrzebne wpisy z różnym przebiegiem." : "Paliwo i serwis, bez zakupu.",
   });
