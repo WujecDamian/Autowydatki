@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   useAddFuelMutation,
@@ -40,8 +41,27 @@ const initialForm = (entry) =>
         totalCost: "",
       };
 
-const FuelForm = ({ carId, entry, defaultStationId, onSaved }) => {
+const fuelTypeLabels = { PETROL: "Benzyna", LPG: "LPG" };
+
+const FuelTypeToggle = ({ value, onChange }) => (
+  <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Rodzaj paliwa">
+    {Object.entries(fuelTypeLabels).map(([fuelType, label]) => (
+      <button
+        key={fuelType}
+        type="button"
+        aria-pressed={value === fuelType}
+        onClick={() => onChange(fuelType)}
+        className="h-10 rounded-lg text-sm font-medium text-muted-foreground transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+      >
+        {label}
+      </button>
+    ))}
+  </div>
+);
+
+const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelType, onSaved }) => {
   const [form, setForm] = useState(() => initialForm(entry));
+  const [fuelType, setFuelType] = useState(entry?.fuelType ?? defaultFuelType);
   const [stationId, setStationId] = useState(entry ? (entry.station?.id ?? null) : defaultStationId);
   const [addFuel, addState] = useAddFuelMutation();
   const [updateFuel, updateState] = useUpdateFuelMutation();
@@ -64,6 +84,7 @@ const FuelForm = ({ carId, entry, defaultStationId, onSaved }) => {
       liters: Number(form.liters),
       totalCost: Number(form.totalCost),
       stationId,
+      fuelType,
     };
 
     try {
@@ -81,6 +102,11 @@ const FuelForm = ({ carId, entry, defaultStationId, onSaved }) => {
 
   return (
     <form className="grid grid-cols-2 gap-4" onSubmit={onSubmit}>
+      {showFuelType ? (
+        <div className="col-span-2">
+          <FuelTypeToggle value={fuelType} onChange={setFuelType} />
+        </div>
+      ) : null}
       <div className="col-span-2">
         <StationPicker value={stationId} onChange={setStationId} />
       </div>
@@ -200,7 +226,12 @@ export const FuelSection = () => {
                     {money.format(entry.totalCost)}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {car.hasLpg || entry.fuelType === "LPG" ? (
+                    <Badge variant={entry.fuelType === "LPG" ? "default" : "secondary"}>
+                      {fuelTypeLabels[entry.fuelType]}
+                    </Badge>
+                  ) : null}
                   <span>{litersFormat.format(entry.liters)} l</span>
                   <span>{money.format(entry.totalCost / entry.liters)}/l</span>
                   {usageText ? (
@@ -240,6 +271,8 @@ export const FuelSection = () => {
             carId={car.id}
             entry={editing.entry}
             defaultStationId={fuel[0]?.station?.id ?? null}
+            showFuelType={car.hasLpg || editing.entry?.fuelType === "LPG"}
+            defaultFuelType={car.hasLpg ? (fuel[0]?.fuelType ?? "PETROL") : "PETROL"}
             onSaved={() => setEditing(null)}
           />
         ) : null}

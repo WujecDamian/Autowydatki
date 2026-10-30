@@ -13,12 +13,21 @@ const fuelFields = {
   odometerKm: true,
   liters: true,
   totalCost: true,
+  fuelType: true,
   station: { select: { id: true, name: true } },
 };
 
 const serializeFuelEntry = (entry) => ({ ...entry, entryDate: toDateString(entry.entryDate) });
 
+const fuelTypes = ["PETROL", "LPG"];
+
 const readFuelBody = (body) => {
+  const fuelType = isBlank(body.fuelType) ? "PETROL" : body.fuelType;
+
+  if (!fuelTypes.includes(fuelType)) {
+    return { error: "Nieznany rodzaj paliwa." };
+  }
+
   if (!isRealDate(body.entryDate)) {
     return { error: "Podaj prawidłową datę." };
   }
@@ -43,6 +52,7 @@ const readFuelBody = (body) => {
     odometerKm,
     liters,
     totalCost,
+    fuelType,
   };
 };
 
@@ -105,6 +115,7 @@ fuelRouter.post("/", requireLogin, async (req, res) => {
         odometerKm: fuel.odometerKm,
         liters: fuel.liters,
         totalCost: fuel.totalCost,
+        fuelType: fuel.fuelType,
         stationId,
       },
       select: fuelFields,
@@ -163,6 +174,7 @@ fuelRouter.patch("/:id", requireLogin, async (req, res) => {
         odometerKm: fuel.odometerKm,
         liters: fuel.liters,
         totalCost: fuel.totalCost,
+        fuelType: fuel.fuelType,
         stationId,
       },
       select: fuelFields,

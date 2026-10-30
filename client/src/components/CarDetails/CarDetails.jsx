@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useDeleteCarMutation, useUpdateCarMutation } from "../../app/api.js";
 import { expiryTone, getExpiryStatus } from "../../lib/expiry.js";
@@ -32,6 +33,7 @@ const formFromCar = (car) => ({
   inspectionValidUntil: car.inspectionValidUntil ?? "",
   ocValidUntil: car.ocValidUntil ?? "",
   acValidUntil: car.acValidUntil ?? "",
+  hasLpg: car.hasLpg,
 });
 
 const CarForm = ({ car }) => {
@@ -55,6 +57,7 @@ const CarForm = ({ car }) => {
         inspectionValidUntil: form.inspectionValidUntil || null,
         ocValidUntil: form.ocValidUntil || null,
         acValidUntil: form.acValidUntil || null,
+        hasLpg: form.hasLpg,
       }).unwrap();
     } catch {
       // The error message is rendered from the mutation result.
@@ -83,6 +86,23 @@ const CarForm = ({ car }) => {
         value={form.purchasePrice}
         onChange={onChange}
       />
+      <label
+        htmlFor="car-has-lpg"
+        className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-xl border bg-background/40 px-3"
+      >
+        <span className="grid gap-0.5">
+          <span className="font-medium">Instalacja LPG</span>
+          <span className="text-xs text-muted-foreground">
+            Tankowania dzielą się na benzynę i LPG, każde z osobnym spalaniem.
+          </span>
+        </span>
+        <Switch
+          id="car-has-lpg"
+          className="mr-1 scale-125"
+          checked={form.hasLpg}
+          onCheckedChange={(hasLpg) => setForm((current) => ({ ...current, hasLpg }))}
+        />
+      </label>
       <div className="grid gap-4 border-t pt-4">
         <h2 className="font-heading font-semibold">Terminy</h2>
         {dateInputs.map(({ field, label }) => {
