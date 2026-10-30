@@ -28,16 +28,14 @@ export const PriceTrend = ({ byFuelType }) => {
   const lastTime = Math.max(...times);
   const span = lastTime - firstTime;
 
-  if (span <= 0) {
-    return null;
-  }
-
   const low = Math.min(...prices);
   const high = Math.max(...prices);
   const pad = Math.max((high - low) * 0.15, 0.1);
   const floor = low - pad;
   const ceiling = high + pad;
-  const x = (point) => ((toTime(point.date) - firstTime) / span) * 100;
+  // Fill-ups all on one day have no time span, so they are spaced evenly in the order they come.
+  const x = (point, index, count) =>
+    span > 0 ? ((toTime(point.date) - firstTime) / span) * 100 : (index / (count - 1)) * 100;
   const y = (point) => 100 - ((point.price - floor) / (ceiling - floor)) * 100;
 
   return (
@@ -90,14 +88,14 @@ export const PriceTrend = ({ byFuelType }) => {
           ))}
           {drawn.map((line) => {
             const series = byFuelType[line.fuelType].series;
-            const path = series.map((point, index) => `${index === 0 ? "M" : "L"}${x(point)} ${y(point)}`).join(" ");
+            const path = series.map((point, index) => `${index === 0 ? "M" : "L"}${x(point, index, series.length)} ${y(point)}`).join(" ");
             const first = series[0];
             const last = series[series.length - 1];
 
             return (
               <g key={line.fuelType}>
                 <path
-                  d={`${path} L${x(last)} 100 L${x(first)} 100 Z`}
+                  d={`${path} L${x(last, series.length - 1, series.length)} 100 L${x(first, 0, series.length)} 100 Z`}
                   fill={`url(#trend-${line.fuelType})`}
                 />
                 <path
@@ -118,7 +116,7 @@ export const PriceTrend = ({ byFuelType }) => {
 
           return series.map((point, index) => {
             const isLast = index === series.length - 1;
-            const left = x(point);
+            const left = x(point, index, series.length);
             // Near the edges the tooltip anchors to the dot's side so it stays inside the card.
             const anchor = left < 12 ? "left-0" : left > 88 ? "right-0" : "left-1/2 -translate-x-1/2";
 
@@ -153,7 +151,7 @@ export const PriceTrend = ({ byFuelType }) => {
       </div>
       <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
         <span>{formatDate(new Date(firstTime).toLocaleDateString("sv-SE"))}</span>
-        <span>{formatDate(new Date(lastTime).toLocaleDateString("sv-SE"))}</span>
+        {span > 0 ? <span>{formatDate(new Date(lastTime).toLocaleDateString("sv-SE"))}</span> : null}
       </div>
     </div>
   );
