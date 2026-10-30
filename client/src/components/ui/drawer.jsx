@@ -58,7 +58,8 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div className="mx-auto mt-4 hidden h-1.5 w-[100px] shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        {/* A real vaul handle, so the drawer can still be swiped closed when FormDrawer sets handleOnly. */}
+        <DrawerPrimitive.Handle className="mt-4 hidden h-1.5! w-[100px]! shrink-0 rounded-full bg-muted! opacity-100! group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>

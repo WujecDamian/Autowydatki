@@ -32,6 +32,7 @@ model Car {
   inspectionValidUntil DateTime?      @map("inspection_valid_until") @db.Date
   ocValidUntil         DateTime?      @map("oc_valid_until") @db.Date
   acValidUntil         DateTime?      @map("ac_valid_until") @db.Date
+  hasLpg               Boolean        @default(false) @map("has_lpg")
   coverPhotoId         Int?           @unique @map("cover_photo_id")
   coverPhoto           CarPhoto?      @relation("CarCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
   photos               CarPhoto[]     @relation("CarPhotos")
@@ -43,6 +44,12 @@ model Car {
   @@map("cars")
 }
 
+// A car with an LPG installation fills both; consumption is calculated per fuel.
+enum FuelType {
+  PETROL
+  LPG
+}
+
 model FuelEntry {
   id         Int          @id @default(autoincrement())
   userId     Int          @map("user_id")
@@ -52,6 +59,7 @@ model FuelEntry {
   liters     Decimal      @db.Decimal(8, 2)
   totalCost  Decimal      @map("total_cost") @db.Decimal(10, 2)
   stationId  Int?         @map("station_id")
+  fuelType   FuelType     @default(PETROL) @map("fuel_type")
   user       User         @relation(fields: [userId], references: [id])
   car        Car          @relation(fields: [carId], references: [id], onDelete: Cascade)
   station    FuelStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)

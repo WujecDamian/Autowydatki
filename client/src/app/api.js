@@ -134,6 +134,14 @@ export const api = createApi({
       }),
       invalidatesTags: ["Fuel"],
     }),
+    updateFuel: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/fuel/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Fuel"],
+    }),
     deleteFuel: builder.mutation({
       query: (id) => ({
         url: `/fuel/${id}`,
@@ -215,6 +223,7 @@ export const {
   useDeletePhotoMutation,
   useGetFuelQuery,
   useAddFuelMutation,
+  useUpdateFuelMutation,
   useDeleteFuelMutation,
   useGetStationsQuery,
   useAddStationMutation,

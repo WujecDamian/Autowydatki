@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
+import { FuelStationIcon } from "@hugeicons/core-free-icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAddFuelMutation, useDeleteFuelMutation, useGetFuelQuery } from "../../app/api.js";
+import {
+  useAddFuelMutation,
+  useDeleteFuelMutation,
+  useGetFuelQuery,
+  useUpdateFuelMutation,
+} from "../../app/api.js";
 import { getSummary } from "../../calculations.js";
 import {
   consumption,
@@ -14,23 +21,55 @@ import {
 } from "../../lib/format.js";
 import { AddButton } from "../AddButton/AddButton.jsx";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
+import { EditButton } from "../EditButton/EditButton.jsx";
 import { Field } from "../Field/Field.jsx";
+import { Icon } from "../Icon/Icon.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
+import { StationLogo } from "../StationLogo/StationLogo.jsx";
 import { StationPicker } from "../StationPicker/StationPicker.jsx";
 
-const emptyForm = () => ({
-  entryDate: todayString(),
-  odometerKm: "",
-  liters: "",
-  totalCost: "",
-});
+const initialForm = (entry) =>
+  entry
+    ? {
+        entryDate: entry.entryDate,
+        odometerKm: String(entry.odometerKm),
+        liters: String(entry.liters),
+        totalCost: String(entry.totalCost),
+      }
+    : {
+        entryDate: todayString(),
+        odometerKm: "",
+        liters: "",
+        totalCost: "",
+      };
 
-const FuelForm = ({ carId, defaultStationId, onSaved }) => {
-  const [form, setForm] = useState(emptyForm);
-  const [stationId, setStationId] = useState(defaultStationId);
+const fuelTypeLabels = { PETROL: "Benzyna", LPG: "LPG" };
+
+const FuelTypeToggle = ({ value, onChange }) => (
+  <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Rodzaj paliwa">
+    {Object.entries(fuelTypeLabels).map(([fuelType, label]) => (
+      <button
+        key={fuelType}
+        type="button"
+        aria-pressed={value === fuelType}
+        onClick={() => onChange(fuelType)}
+        className="h-10 rounded-lg text-sm font-medium text-muted-foreground transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+      >
+        {label}
+      </button>
+    ))}
+  </div>
+);
+
+const FuelForm = ({ carId, entry, defaultStationId, showFuelType, defaultFuelType, onSaved }) => {
+  const [form, setForm] = useState(() => initialForm(entry));
+  const [fuelType, setFuelType] = useState(entry?.fuelType ?? defaultFuelType);
+  const [stationId, setStationId] = useState(entry ? (entry.station?.id ?? null) : defaultStationId);
   const [addFuel, addState] = useAddFuelMutation();
-  const errorMessage = errorText(addState.error, "Nie udało się zapisać tankowania.");
+  const [updateFuel, updateState] = useUpdateFuelMutation();
+  const saveState = entry ? updateState : addState;
+  const errorMessage = errorText(saveState.error, "Nie udało się zapisać tankowania.");
 
   const onChange = (event) => {
     setForm((current) => ({
@@ -42,16 +81,22 @@ const FuelForm = ({ carId, defaultStationId, onSaved }) => {
   const onSubmit = async (event) => {
     event.preventDefault();
 
+    const body = {
+      entryDate: form.entryDate,
+      odometerKm: Number(form.odometerKm),
+      liters: Number(form.liters),
+      totalCost: Number(form.totalCost),
+      stationId,
+      fuelType,
+    };
+
     try {
-      await addFuel({
-        carId,
-        entryDate: form.entryDate,
-        odometerKm: Number(form.odometerKm),
-        liters: Number(form.liters),
-        totalCost: Number(form.totalCost),
-        stationId,
-      }).unwrap();
-      setForm(emptyForm());
+      if (entry) {
+        await updateFuel({ id: entry.id, ...body }).unwrap();
+      } else {
+        await addFuel({ carId, ...body }).unwrap();
+      }
+
       onSaved();
     } catch {
       // The error message is rendered from the mutation result.
@@ -60,6 +105,11 @@ const FuelForm = ({ carId, defaultStationId, onSaved }) => {
 
   return (
     <form className="grid grid-cols-2 gap-4" onSubmit={onSubmit}>
+      {showFuelType ? (
+        <div className="col-span-2">
+          <FuelTypeToggle value={fuelType} onChange={setFuelType} />
+        </div>
+      ) : null}
       <div className="col-span-2">
         <StationPicker value={stationId} onChange={setStationId} />
       </div>
@@ -113,8 +163,8 @@ const FuelForm = ({ carId, defaultStationId, onSaved }) => {
           {errorMessage}
         </p>
       ) : null}
-      <Button type="submit" size="lg" className="col-span-2" disabled={addState.isLoading}>
-        {addState.isLoading ? "Zapisywanie..." : "Dodaj tankowanie"}
+      <Button type="submit" size="lg" className="col-span-2" disabled={saveState.isLoading}>
+        {saveState.isLoading ? "Zapisywanie..." : entry ? "Zapisz zmiany" : "Dodaj tankowanie"}
       </Button>
     </form>
   );
@@ -124,7 +174,8 @@ export const FuelSection = () => {
   const { car } = useOutletContext();
   const fuelQuery = useGetFuelQuery(car.id);
   const [deleteFuel, deleteState] = useDeleteFuelMutation();
-  const [formOpen, setFormOpen] = useState(false);
+  // null: drawer closed, { entry: null }: new fill-up, { entry }: editing that fill-up.
+  const [editing, setEditing] = useState(null);
   const fuel = fuelQuery.data ?? [];
   const usageById = {};
 
@@ -158,50 +209,83 @@ export const FuelSection = () => {
           }
 
           return (
-            <li key={entry.id} className="grid gap-2 rounded-2xl border bg-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {entry.station ? entry.station.name : formatDate(entry.entryDate)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {entry.station ? `${formatDate(entry.entryDate)} · ` : ""}
-                    {kilometers.format(entry.odometerKm)} km
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <p className="font-heading text-lg font-semibold">
+            <li key={entry.id} className="flex items-start gap-1 rounded-2xl border bg-card p-1">
+              <button
+                type="button"
+                onClick={() => setEditing({ entry })}
+                className="grid min-w-0 flex-1 gap-2 rounded-xl p-3 text-left transition-colors hover:bg-accent/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  {entry.station ? (
+                    <StationLogo name={entry.station.name} />
+                  ) : (
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <Icon icon={FuelStationIcon} />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {entry.station ? entry.station.name : formatDate(entry.entryDate)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {entry.station ? `${formatDate(entry.entryDate)} · ` : ""}
+                      {kilometers.format(entry.odometerKm)} km
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-heading text-lg font-semibold">
                     {money.format(entry.totalCost)}
                   </p>
-                  <ConfirmDelete
-                    title="Usunąć tankowanie?"
-                    description={`Tankowanie z ${formatDate(entry.entryDate)} zostanie usunięte.`}
-                    onConfirm={() => deleteFuel(entry.id)}
-                    disabled={deleteState.isLoading}
-                  />
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span>{litersFormat.format(entry.liters)} l</span>
-                <span>{money.format(entry.totalCost / entry.liters)}/l</span>
-                {usageText ? (
-                  <span className={litersPer100km === null ? "text-warning" : "text-primary"}>
-                    {usageText}
-                  </span>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {car.hasLpg || entry.fuelType === "LPG" ? (
+                    <Badge variant={entry.fuelType === "LPG" ? "default" : "secondary"}>
+                      {fuelTypeLabels[entry.fuelType]}
+                    </Badge>
+                  ) : null}
+                  <span>{litersFormat.format(entry.liters)} l</span>
+                  <span>{money.format(entry.totalCost / entry.liters)}/l</span>
+                  {usageText ? (
+                    <span className={litersPer100km === null ? "text-warning" : "text-primary"}>
+                      {usageText}
+                    </span>
+                  ) : null}
+                </div>
+              </button>
+              <div className="flex flex-col pt-2 pr-1">
+                <EditButton label="Edytuj tankowanie" onClick={() => setEditing({ entry })} />
+                <ConfirmDelete
+                  title="Usunąć tankowanie?"
+                  description={`Tankowanie z ${formatDate(entry.entryDate)} zostanie usunięte.`}
+                  onConfirm={() => deleteFuel(entry.id)}
+                  disabled={deleteState.isLoading}
+                />
               </div>
             </li>
           );
         })}
       </ul>
-      <AddButton label="Dodaj tankowanie" onClick={() => setFormOpen(true)} />
-      <FormDrawer open={formOpen} onOpenChange={setFormOpen} title="Nowe tankowanie">
-        {/* The newest entry's station is the default, so regulars tap it only once. */}
-        <FuelForm
-          carId={car.id}
-          defaultStationId={fuel[0]?.station?.id ?? null}
-          onSaved={() => setFormOpen(false)}
-        />
+      <AddButton label="Dodaj tankowanie" onClick={() => setEditing({ entry: null })} />
+      <FormDrawer
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(null);
+          }
+        }}
+        title={editing?.entry ? "Edytuj tankowanie" : "Nowe tankowanie"}
+      >
+        {editing ? (
+          // The newest entry's station is the default for a new fill-up, so regulars tap it only once.
+          <FuelForm
+            key={editing.entry?.id ?? "new"}
+            carId={car.id}
+            entry={editing.entry}
+            defaultStationId={fuel[0]?.station?.id ?? null}
+            showFuelType={car.hasLpg || editing.entry?.fuelType === "LPG"}
+            defaultFuelType={car.hasLpg ? (fuel[0]?.fuelType ?? "PETROL") : "PETROL"}
+            onSaved={() => setEditing(null)}
+          />
+        ) : null}
       </FormDrawer>
     </section>
   );

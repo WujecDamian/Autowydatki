@@ -5,6 +5,7 @@ import { useDeleteServiceMutation, useGetServicesQuery } from "../../app/api.js"
 import { formatDate, kilometers, money } from "../../lib/format.js";
 import { AddButton } from "../AddButton/AddButton.jsx";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
+import { EditButton } from "../EditButton/EditButton.jsx";
 import { FormDrawer } from "../FormDrawer/FormDrawer.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 import { ServiceForm } from "../ServiceForm/ServiceForm.jsx";
@@ -81,7 +82,8 @@ export const ServiceSection = () => {
                 {itemSummary(entry.items)}
               </p>
             </button>
-            <div className="pt-2 pr-1">
+            <div className="flex flex-col pt-2 pr-1">
+              <EditButton label="Edytuj wpis" onClick={() => setEditing({ entry })} />
               <ConfirmDelete
                 title="Usunąć wpis?"
                 description={`„${entryTitle(entry)}” z ${formatDate(entry.entryDate)} zostanie usunięty razem z pozycjami.`}

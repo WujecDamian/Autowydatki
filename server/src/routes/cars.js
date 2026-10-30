@@ -17,6 +17,7 @@ const carFields = {
   inspectionValidUntil: true,
   ocValidUntil: true,
   acValidUntil: true,
+  hasLpg: true,
   coverPhotoId: true,
   coverPhoto: { select: { storagePath: true } },
 };
@@ -85,6 +86,14 @@ const readCarChanges = (body) => {
     }
 
     data.purchasePrice = result.purchasePrice;
+  }
+
+  if ("hasLpg" in body) {
+    if (typeof body.hasLpg !== "boolean") {
+      return { error: "Nieprawidłowa wartość LPG." };
+    }
+
+    data.hasLpg = body.hasLpg;
   }
 
   for (const field of dateFields) {

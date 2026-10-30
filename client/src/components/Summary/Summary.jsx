@@ -5,10 +5,12 @@ import { consumption, money } from "../../lib/format.js";
 import { ExpiryTiles } from "../ExpiryTiles/ExpiryTiles.jsx";
 import { PageHeader } from "../PageHeader/PageHeader.jsx";
 
+const formatAverage = (value) => (value === null ? "—" : consumption.format(value));
+
 const Tile = ({ label, value, hint }) => (
   <div className="grid content-start gap-1 rounded-2xl border bg-card p-4">
     <p className="text-xs text-muted-foreground">{label}</p>
-    <p className="font-heading text-xl font-semibold tracking-tight">{value}</p>
+    <div className="font-heading text-xl font-semibold tracking-tight">{value}</div>
     {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
   </div>
 );
@@ -32,6 +34,8 @@ export const Summary = () => {
 
   const summary = getSummary(fuelQuery.data, serviceQuery.data);
   const purchase = car.purchasePrice ?? 0;
+  // The split appears for LPG cars, and for cars that once had LPG fill-ups.
+  const showLpg = car.hasLpg || summary.byFuelType.LPG.count > 0;
 
   return (
     <section className="grid gap-4">
@@ -54,7 +58,15 @@ export const Summary = () => {
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile label="Paliwo" value={money.format(summary.fuelCost)} />
+        <Tile
+          label="Paliwo"
+          value={money.format(summary.fuelCost)}
+          hint={
+            showLpg
+              ? `Benzyna ${money.format(summary.byFuelType.PETROL.cost)} · LPG ${money.format(summary.byFuelType.LPG.cost)}`
+              : null
+          }
+        />
         <Tile
           label="Serwis"
           value={money.format(summary.serviceCost)}
@@ -68,19 +80,34 @@ export const Summary = () => {
           label="Cena zakupu"
           value={car.purchasePrice === null ? "—" : money.format(purchase)}
         />
-        <Tile
-          label="Średnie spalanie"
-          value={
-            summary.averageLitersPer100km === null
-              ? "—"
-              : `${consumption.format(summary.averageLitersPer100km)} l/100 km`
-          }
-          hint={
-            summary.averageLitersPer100km === null
-              ? "Potrzebne dwa tankowania z rosnącym przebiegiem."
-              : null
-          }
-        />
+        {showLpg ? (
+          <Tile
+            label="Spalanie (l/100 km)"
+            value={
+              <span className="grid gap-0.5">
+                <span>LPG {formatAverage(summary.byFuelType.LPG.averageLitersPer100km)}</span>
+                <span className="text-base text-muted-foreground">
+                  Benzyna {formatAverage(summary.byFuelType.PETROL.averageLitersPer100km)}
+                </span>
+              </span>
+            }
+            hint="Każde paliwo liczone osobno."
+          />
+        ) : (
+          <Tile
+            label="Średnie spalanie"
+            value={
+              summary.averageLitersPer100km === null
+                ? "—"
+                : `${consumption.format(summary.averageLitersPer100km)} l/100 km`
+            }
+            hint={
+              summary.averageLitersPer100km === null
+                ? "Potrzebne dwa tankowania z rosnącym przebiegiem."
+                : null
+            }
+          />
+        )}
       </div>
     </section>
   );

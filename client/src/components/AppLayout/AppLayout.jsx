@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { Outlet } from "react-router";
 import { api, useGetCarsQuery } from "../../app/api.js";
 import { logout } from "../../features/auth/authSlice.js";
+import { AddCarButton } from "../AddCarButton/AddCarButton.jsx";
 import { AddCarForm } from "../AddCarForm/AddCarForm.jsx";
 import { BottomNav } from "../BottomNav/BottomNav.jsx";
 import { CarSwitcher } from "../CarSwitcher/CarSwitcher.jsx";
@@ -52,7 +53,10 @@ export const AppLayout = () => {
         <header className="sticky top-0 z-30 border-b bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
             <CarSwitcher cars={cars} selectedCar={selectedCar} onSelect={onSelectCar} />
-            <UserMenu onLogout={onLogout} />
+            <div className="flex shrink-0 items-center gap-2">
+              <AddCarButton onAdded={onSelectCar} />
+              <UserMenu onLogout={onLogout} />
+            </div>
           </div>
         </header>
         <main className="mx-auto grid max-w-3xl gap-6 px-4 py-6">

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getExpiryStatus, needsAttention } from "./expiry.js";
+import { getExpiryStatus, mostUrgentExpiry, needsAttention } from "./expiry.js";
 
 const today = "2026-10-29";
 
@@ -54,4 +54,15 @@ test("urgent and expired need attention", () => {
   assert.equal(needsAttention(getExpiryStatus("2026-11-03", today)), true);
   assert.equal(needsAttention(getExpiryStatus("2026-11-20", today)), false);
   assert.equal(needsAttention(null), false);
+});
+
+test("the most urgent expiry is the one with the fewest days left", () => {
+  const car = {
+    inspectionValidUntil: "2026-11-03",
+    ocValidUntil: "2026-10-25",
+    acValidUntil: "2027-03-01",
+  };
+
+  assert.equal(mostUrgentExpiry(car, today).label, "OC");
+  assert.equal(mostUrgentExpiry({ inspectionValidUntil: "2027-01-01" }, today), null);
 });

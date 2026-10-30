@@ -19,12 +19,20 @@ import {
 } from "../../app/api.js";
 import { errorText } from "../../lib/format.js";
 import { ConfirmDelete } from "../ConfirmDelete/ConfirmDelete.jsx";
+import { StationLogo } from "../StationLogo/StationLogo.jsx";
 
 // Radix Select does not allow an empty value, so "no station" and "add new" get sentinels.
 const noStation = "none";
 const newStation = "new";
 
-const itemClass = "min-h-10 text-sm";
+const itemClass = "min-h-11 text-sm";
+
+const StationOption = ({ name }) => (
+  <span className="flex items-center gap-3">
+    <StationLogo name={name} className="size-7 rounded-lg p-1 text-xs" />
+    {name}
+  </span>
+);
 
 export const StationPicker = ({ value, onChange }) => {
   const { data: stations = [] } = useGetStationsQuery();
@@ -84,7 +92,7 @@ export const StationPicker = ({ value, onChange }) => {
               <SelectLabel>Sieci</SelectLabel>
               {builtIn.map((station) => (
                 <SelectItem key={station.id} value={String(station.id)} className={itemClass}>
-                  {station.name}
+                  <StationOption name={station.name} />
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -93,7 +101,7 @@ export const StationPicker = ({ value, onChange }) => {
                 <SelectLabel>Twoje stacje</SelectLabel>
                 {custom.map((station) => (
                   <SelectItem key={station.id} value={String(station.id)} className={itemClass}>
-                    {station.name}
+                    <StationOption name={station.name} />
                   </SelectItem>
                 ))}
               </SelectGroup>
