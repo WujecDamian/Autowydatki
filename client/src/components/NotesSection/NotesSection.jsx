@@ -144,7 +144,7 @@ export const NotesSection = () => {
           Brak notatek. Zapisz np. ciśnienie w oponach, kod radia albo numer do warsztatu.
         </p>
       ) : null}
-      <div className="grid items-start gap-6 lg:grid-cols-[26rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[26rem_minmax(0,1fr)]">
       <ul className="grid gap-3">
         {notes.map((note) => {
           const { title, preview } = splitNote(note.body);

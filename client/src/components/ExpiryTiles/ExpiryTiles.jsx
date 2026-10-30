@@ -63,7 +63,7 @@ export const ExpiryTiles = ({ car }) => {
         </h2>
         <ul className="grid">
           {rows.map(({ field, label, status }, index) => (
-            <li key={field} className={cn(index > 0 && "border-t border-border/70", "mx-3 first:mx-0")}>
+            <li key={field} className={cn(index > 0 && "border-t border-border/70")}>
               <Link
                 to="/auto"
                 state={{ highlight: field }}

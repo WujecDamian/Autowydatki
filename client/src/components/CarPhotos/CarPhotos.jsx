@@ -154,14 +154,14 @@ export const CarPhotos = ({ car }) => {
       />
       {car.coverUrl ? (
         <div className="group relative overflow-hidden rounded-3xl border" data-glow="">
-          <img src={car.coverUrl} alt={`Okładka: ${car.name}`} className="aspect-video w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 lg:aspect-[21/9]" />
+          <img src={car.coverUrl} alt={`Okładka: ${car.name}`} className="aspect-video w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 lg:aspect-[3/1]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-primary/10" />
         </div>
       ) : (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="grid aspect-video place-content-center justify-items-center gap-2 rounded-3xl border border-dashed text-muted-foreground transition-colors hover:bg-accent/40"
+          className="grid aspect-video place-content-center lg:aspect-[3/1] justify-items-center gap-2 rounded-3xl border border-dashed text-muted-foreground transition-colors hover:bg-accent/40"
         >
           <Icon icon={ImageAdd01Icon} size={32} className="text-primary" />
           <span className="text-sm">Dodaj zdjęcie auta</span>

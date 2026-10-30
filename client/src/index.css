@@ -102,45 +102,48 @@
 
 /* Cursor-following border glow: any element with data-glow lights its border where the pointer is.
    The pointer position comes from lib/glow.js as --glow-x / --glow-y. */
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  [data-glow] {
-    position: relative;
-    isolation: isolate;
-  }
-  [data-glow]::before,
-  [data-glow]::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
-  [data-glow]::before {
-    z-index: 1;
-    padding: 1.5px;
-    background: radial-gradient(
-      220px circle at var(--glow-x, 50%) var(--glow-y, 50%),
-      oklch(0.82 0.16 295 / 0.95),
-      oklch(0.66 0.21 295 / 0.4) 45%,
-      transparent 75%
-    );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  }
-  [data-glow]::after {
-    z-index: -1;
-    background: radial-gradient(
-      280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
-      oklch(0.66 0.21 295 / 0.014),
-      transparent 70%
-    );
-  }
-  [data-glow]:hover::before,
-  [data-glow]:hover::after {
-    opacity: 1;
+/* In the components layer so utilities such as sticky, fixed and absolute still win over the relative below. */
+@layer components {
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    [data-glow] {
+      position: relative;
+      isolation: isolate;
+    }
+    [data-glow]::before,
+    [data-glow]::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    [data-glow]::before {
+      z-index: 1;
+      padding: 1.5px;
+      background: radial-gradient(
+        220px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+        oklch(0.82 0.16 295 / 0.95),
+        oklch(0.66 0.21 295 / 0.4) 45%,
+        transparent 75%
+      );
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    }
+    [data-glow]::after {
+      z-index: -1;
+      background: radial-gradient(
+        280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+        oklch(0.66 0.21 295 / 0.014),
+        transparent 70%
+      );
+    }
+    [data-glow]:hover::before,
+    [data-glow]:hover::after {
+      opacity: 1;
+    }
   }
 }
 

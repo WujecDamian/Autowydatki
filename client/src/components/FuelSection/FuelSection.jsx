@@ -215,7 +215,7 @@ export const FuelSection = () => {
           Brak tankowań. Dodaj pierwsze przyciskiem +.
         </p>
       ) : null}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <ul className="grid gap-3">
         {fuel.map((entry) => {
           const litersPer100km = usageById[entry.id];
@@ -232,9 +232,9 @@ export const FuelSection = () => {
               <button
                 type="button"
                 onClick={() => setEditing({ entry })}
-                className="grid min-w-0 flex-1 gap-2 rounded-xl p-3 text-left transition-colors hover:bg-accent/40 md:flex md:items-center md:gap-4 md:px-4"
+                className="grid min-w-0 flex-1 gap-2 rounded-xl p-3 text-left transition-colors hover:bg-accent/40 xl:flex xl:items-center xl:gap-3 xl:px-4"
               >
-                <div className="flex items-start justify-between gap-3 md:contents">
+                <div className="flex items-start justify-between gap-3 xl:contents">
                   {entry.station ? (
                     <StationLogo name={entry.station.name} />
                   ) : (
@@ -251,11 +251,11 @@ export const FuelSection = () => {
                       {kilometers.format(entry.odometerKm)} km
                     </p>
                   </div>
-                  <p className="shrink-0 font-heading text-lg font-semibold tabular-nums md:order-last md:w-28 md:text-right">
+                  <p className="shrink-0 font-heading text-lg font-semibold tabular-nums xl:order-last xl:w-24 xl:text-right">
                     {money.format(entry.totalCost)}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums md:flex-nowrap md:justify-end">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums xl:flex-nowrap xl:justify-end">
                   {car.hasLpg || entry.fuelType === "LPG" ? (
                     <Badge variant={entry.fuelType === "LPG" ? "default" : "secondary"}>
                       {fuelTypeLabels[entry.fuelType]}
