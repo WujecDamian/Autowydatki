@@ -162,3 +162,18 @@ test("fuel stats keep petrol and LPG prices apart and find the newest fill-up", 
   assert.equal(stats.byFuelType.LPG.latestPrice, 3);
   assert.equal(stats.last.id, 3);
 });
+
+test("fuel cost per 100 km is consumption times the average price per litre", () => {
+  const summary = getSummary(
+    [
+      { id: 1, odometerKm: 1000, liters: 40, totalCost: 240, fuelType: "PETROL" },
+      { id: 2, odometerKm: 1500, liters: 25, totalCost: 150, fuelType: "PETROL" },
+      { id: 3, odometerKm: 1000, liters: 40, totalCost: 120, fuelType: "LPG" },
+    ],
+    [],
+  );
+
+  // 25 l over 500 km is 5 l/100km, and 390 zł for 65 l is 6 zł/l.
+  assert.equal(summary.byFuelType.PETROL.costPer100km, 30);
+  assert.equal(summary.byFuelType.LPG.costPer100km, null);
+});

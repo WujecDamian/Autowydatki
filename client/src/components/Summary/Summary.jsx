@@ -10,6 +10,9 @@ import { PageHeader } from "../PageHeader/PageHeader.jsx";
 
 const formatAverage = (value) => (value === null ? "—" : consumption.format(value));
 
+const fuelCostHint = (costPer100km) =>
+  costPer100km === null ? null : `Koszt paliwa ${money.format(costPer100km)} / 100 km`;
+
 const percent = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
 // One row of the cost split: a colour dot, the label, the amount and an optional breakdown.
@@ -131,10 +134,12 @@ export const Summary = () => {
         {
           label: "Spalanie LPG",
           value: <>{formatAverage(summary.byFuelType.LPG.averageLitersPer100km)} {unit}</>,
+          hint: fuelCostHint(summary.byFuelType.LPG.costPer100km),
         },
         {
           label: "Spalanie benzyna",
           value: <>{formatAverage(summary.byFuelType.PETROL.averageLitersPer100km)} {unit}</>,
+          hint: fuelCostHint(summary.byFuelType.PETROL.costPer100km),
         },
       ]
     : [

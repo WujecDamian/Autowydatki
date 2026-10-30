@@ -46,11 +46,19 @@ export const getSummary = (fuelEntries, serviceEntries) => {
     const consumption = getConsumption(entries);
 
     perFill.push(...consumption.perFill);
+    const cost = entries.reduce((sum, entry) => sum + entry.totalCost, 0);
+    const liters = entries.reduce((sum, entry) => sum + entry.liters, 0);
+
     byFuelType[fuelType] = {
       count: entries.length,
-      cost: entries.reduce((sum, entry) => sum + entry.totalCost, 0),
-      liters: entries.reduce((sum, entry) => sum + entry.liters, 0),
+      cost,
+      liters,
       averageLitersPer100km: consumption.averageLitersPer100km,
+      // Average consumption at the average price paid per litre.
+      costPer100km:
+        consumption.averageLitersPer100km !== null && liters > 0
+          ? consumption.averageLitersPer100km * (cost / liters)
+          : null,
     };
   }
 
