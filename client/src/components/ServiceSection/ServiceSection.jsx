@@ -68,7 +68,7 @@ export const ServiceSection = () => {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <ul className="grid gap-3">
         {services.map((entry) => (
-          <li key={entry.id} data-glow="" className="flex items-start gap-1 rounded-2xl border bg-card p-1">
+          <li key={entry.id} data-glow="" className="flex items-start gap-1 rounded-2xl border bg-card p-1 md:items-center">
             <button
               type="button"
               onClick={() => setEditing({ entry })}
@@ -95,7 +95,7 @@ export const ServiceSection = () => {
                 {itemSummary(entry.items)}
               </p>
             </button>
-            <div className="flex flex-col pt-2 pr-1">
+            <div className="flex flex-col pt-2 pr-1 md:flex-row md:pt-0">
               <EditButton label="Edytuj wpis" onClick={() => setEditing({ entry })} />
               <ConfirmDelete
                 title="Usunąć wpis?"
