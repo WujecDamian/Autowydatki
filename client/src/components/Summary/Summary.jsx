@@ -73,9 +73,9 @@ const CostHero = ({ car, total, parts }) => {
           <img
             src={car.coverUrl}
             alt=""
-            className="absolute inset-0 size-full scale-125 object-cover opacity-45 blur-3xl saturate-150 transition-transform duration-700 ease-out group-hover:scale-150"
+            className="absolute inset-0 size-full scale-110 object-cover opacity-80 blur-[3px] saturate-125 transition-transform duration-700 ease-out group-hover:scale-125"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-background/30 via-transparent to-background/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/55 to-background/85 backdrop-blur-[2px]" />
         </>
       ) : null}
       <div className="relative grid gap-1">
