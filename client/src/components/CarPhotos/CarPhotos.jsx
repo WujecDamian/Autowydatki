@@ -154,7 +154,7 @@ export const CarPhotos = ({ car }) => {
       />
       {car.coverUrl ? (
         <div className="group relative overflow-hidden rounded-3xl border" data-glow="">
-          <img src={car.coverUrl} alt={`Okładka: ${car.name}`} className="aspect-video w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 lg:aspect-[3/1]" />
+          <img src={car.coverUrl} alt={`Okładka: ${car.name}`} decoding="async" className="aspect-video w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 lg:aspect-[3/1]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-primary/10" />
         </div>
       ) : (

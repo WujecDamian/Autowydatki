@@ -191,6 +191,10 @@
   .aurora {
     animation: aurora-drift 18s ease-in-out infinite;
   }
+  /* The blurred blobs repaint every frame; hold them still while a drawer slides over the page. */
+  body:has([data-vaul-drawer]) .aurora {
+    animation-play-state: paused;
+  }
 }
 
 @keyframes trend-wipe {

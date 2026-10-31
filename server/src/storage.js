@@ -21,7 +21,7 @@ export const saveFile = async (filePath, buffer, contentType) => {
   if (supabase) {
     const { error } = await supabase.storage
       .from(bucket)
-      .upload(filePath, buffer, { contentType, upsert: false });
+      .upload(filePath, buffer, { contentType, upsert: false, cacheControl: "31536000, immutable" });
 
     if (error) {
       throw error;

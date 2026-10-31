@@ -24,11 +24,11 @@ const CarCard = ({ car, isSelected, today, onChoose, alone }) => {
           : "border-border",
       )}
     >
-      {car.coverUrl ? (
+      {car.coverThumbUrl ? (
         <img
-          src={car.coverUrl}
+          src={car.coverThumbUrl}
           alt=""
-          loading="lazy"
+          decoding="async"
           className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
       ) : (
@@ -36,8 +36,8 @@ const CarCard = ({ car, isSelected, today, onChoose, alone }) => {
           <Icon icon={Car01Icon} size={64} />
         </span>
       )}
-      {/* Frosted strip so the name stays readable on any photo. */}
-      <span className="absolute inset-x-0 bottom-0 flex items-center gap-3 border-t border-white/10 bg-background/45 px-4 py-3 backdrop-blur-md">
+      {/* Translucent strip (no backdrop blur: it makes the drawer animation stutter on phones) so the name stays readable on any photo. */}
+      <span className="absolute inset-x-0 bottom-0 flex items-center gap-3 border-t border-white/10 bg-background/75 px-4 py-3">
         <span className="min-w-0 flex-1">
           <span className="block truncate font-heading text-lg font-semibold">{car.name}</span>
           {urgent ? (

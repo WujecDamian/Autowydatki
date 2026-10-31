@@ -34,6 +34,8 @@ const baseQueryWithLogout = async (args, queryApi, extraOptions) => {
 export const api = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithLogout,
+  // Switching back to a car within five minutes shows its data at once.
+  keepUnusedDataFor: 300,
   tagTypes: ["Car", "Fuel", "Service", "Station", "Photo", "Note"],
   endpoints: (builder) => ({
     login: builder.mutation({

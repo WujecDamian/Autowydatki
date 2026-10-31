@@ -68,10 +68,10 @@ const CostHero = ({ car, total, parts }) => {
       style={{ "--i": 0 }}
       className="reveal group relative order-first grid gap-6 lg:order-none overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/25 to-card to-60% p-5 sm:p-6 lg:sticky lg:top-24"
     >
-      {car.coverUrl ? (
+      {car.coverThumbUrl ? (
         <>
           <img
-            src={car.coverUrl}
+            src={car.coverThumbUrl}
             alt=""
             className="absolute inset-0 size-full scale-110 object-cover opacity-80 blur-[3px] saturate-125 transition-transform duration-700 ease-out group-hover:scale-125"
           />

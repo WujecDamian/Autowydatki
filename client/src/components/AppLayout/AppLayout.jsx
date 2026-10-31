@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Outlet } from "react-router";
 import { api, useGetCarsQuery } from "../../app/api.js";
@@ -35,6 +35,14 @@ export const AppLayout = () => {
   const [chosenCarId, setChosenCarId] = useState(readStoredCarId);
   const cars = carsQuery.data ?? [];
   const selectedCar = cars.find((car) => car.id === chosenCarId) ?? cars[0] ?? null;
+
+  // Load every car's summary data up front, so switching cars does not wait for the network.
+  useEffect(() => {
+    for (const car of carsQuery.data ?? []) {
+      dispatch(api.util.prefetch("getFuel", car.id, { force: false }));
+      dispatch(api.util.prefetch("getServices", car.id, { force: false }));
+    }
+  }, [carsQuery.data, dispatch]);
 
   const onSelectCar = (carId) => {
     setChosenCarId(carId);
