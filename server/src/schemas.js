@@ -6,8 +6,8 @@ import { isRealDate } from "./validation.js";
 // Column limits: quantity DECIMAL(8,2), costs DECIMAL(10,2), purchase price DECIMAL(12,2), INT4 odometer.
 // The caps are lower than the columns so absurd values are rejected with a clear message.
 export const limits = {
-  maximumQuantity: 1000,
-  maximumFuelCost: 100000,
+  maximumQuantity: 2000,
+  maximumFuelCost: 50000,
   maximumServiceCost: 99999999.99,
   maximumPurchasePrice: 100000000,
   maximumOdometerKm: 9999999,

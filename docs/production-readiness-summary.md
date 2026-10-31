@@ -36,7 +36,7 @@ A **schema** is a description of what valid data looks like. zod checks data aga
 ```js
 export const fuelSchema = z.object({
   liters: numberField("Litry muszą być większe od 0.").pipe(
-    z.number().gt(0, "Litry muszą być większe od 0.").max(1000, "...")
+    z.number().gt(0, "Litry muszą być większe od 0.").max(2000, "...")
   ),
   ...
 });
