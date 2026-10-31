@@ -42,6 +42,7 @@ export const ServiceSection = () => {
   const desktop = useMediaQuery("(min-width: 64rem)");
   const active = editing ?? (desktop ? { entry: null } : null);
   const services = serviceQuery.data ?? [];
+  const isEmpty = !serviceQuery.isLoading && !serviceQuery.isError && services.length === 0;
   const summary = getSummary([], services);
   const newest = [...services].sort(
     (a, b) => b.entryDate.localeCompare(a.entryDate) || b.odometerKm - a.odometerKm,
@@ -67,11 +68,6 @@ export const ServiceSection = () => {
           Nie udało się wczytać serwisów.
         </p>
       ) : null}
-      {!serviceQuery.isLoading && !serviceQuery.isError && services.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Brak wpisów. Dodaj pierwszą naprawę albo badanie przyciskiem +.
-        </p>
-      ) : null}
       {newest ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile label="Wydane na serwis" value={money.format(summary.serviceCost)} order={1} />
@@ -86,6 +82,12 @@ export const ServiceSection = () => {
         </div>
       ) : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-3">
+        {isEmpty ? (
+          <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {desktop ? "Brak wpisów. Uzupełnij formularz, aby dodać pierwszą naprawę albo badanie." : "Brak wpisów. Dodaj pierwszą naprawę albo badanie przyciskiem +."}
+          </p>
+        ) : null}
       <ul className="grid gap-3">
         {services.map((entry, index) => (
           <li
@@ -132,6 +134,7 @@ export const ServiceSection = () => {
           </li>
         ))}
       </ul>
+      </div>
       {desktop && active ? (
         <FormPanel
           title={active.entry ? "Edytuj wpis" : "Nowy wpis serwisowy"}

@@ -191,6 +191,7 @@ export const FuelSection = () => {
   const desktop = useMediaQuery("(min-width: 64rem)");
   const active = editing ?? (desktop ? { entry: null } : null);
   const fuel = fuelQuery.data ?? [];
+  const isEmpty = !fuelQuery.isLoading && !fuelQuery.isError && fuel.length === 0;
   const usageById = {};
 
   for (const item of getSummary(fuel, []).perFill) {
@@ -227,11 +228,6 @@ export const FuelSection = () => {
           {texts.loadError}
         </p>
       ) : null}
-      {!fuelQuery.isLoading && !fuelQuery.isError && fuel.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          {texts.empty}
-        </p>
-      ) : null}
       {fuel.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile label={texts.spent} value={money.format(summary.fuelCost)} order={1} />
@@ -257,6 +253,11 @@ export const FuelSection = () => {
       ) : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="grid gap-3">
+        {isEmpty ? (
+          <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {desktop ? texts.emptyDesktop : texts.empty}
+          </p>
+        ) : null}
       <PriceTrend byFuelType={stats.byFuelType} texts={texts} />
       <ul className="grid gap-3">
         {fuel.map((entry, index) => {

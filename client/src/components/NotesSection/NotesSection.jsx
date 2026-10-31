@@ -120,6 +120,7 @@ export const NotesSection = () => {
   const desktop = useMediaQuery("(min-width: 64rem)");
   const active = editing ?? (desktop ? { note: null } : null);
   const notes = notesQuery.data ?? [];
+  const isEmpty = !notesQuery.isLoading && !notesQuery.isError && notes.length === 0;
   const noteForm = active ? (
     <NoteForm
       key={active.note?.id ?? "new"}
@@ -139,12 +140,13 @@ export const NotesSection = () => {
           Nie udało się wczytać notatek.
         </p>
       ) : null}
-      {!notesQuery.isLoading && !notesQuery.isError && notes.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Brak notatek. Zapisz np. ciśnienie w oponach, kod radia albo numer do warsztatu.
-        </p>
-      ) : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[26rem_minmax(0,1fr)]">
+      <div className="grid gap-3">
+        {isEmpty ? (
+          <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {desktop ? "Brak notatek. Napisz pierwszą w formularzu, np. ciśnienie w oponach albo kod radia." : "Brak notatek. Zapisz np. ciśnienie w oponach, kod radia albo numer do warsztatu."}
+          </p>
+        ) : null}
       <ul className="grid gap-3">
         {notes.map((note, index) => {
           const { title, preview } = splitNote(note.body);
@@ -183,6 +185,7 @@ export const NotesSection = () => {
           );
         })}
       </ul>
+      </div>
       {desktop && active ? (
         <FormPanel
           title={active.note ? "Edytuj notatkę" : "Nowa notatka"}
