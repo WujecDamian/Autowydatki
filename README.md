@@ -4,7 +4,7 @@ Aplikacja webowa do liczenia kosztów utrzymania auta: tankowania, spalanie, ser
 
 ![Autowydatki demo](docs/demo.gif)
 
-**Demo:** logowanie `admin@autowydatki.pl` / `autowydatki` (konto publiczne, dane testowe) lub przez Google.
+**Live demo:** https://autowydatki.wujecdamian.dev/, logowanie `admin@autowydatki.pl` / `autowydatki` (konto publiczne, dane testowe) lub przez Google.
 
 ## Co potrafi
 
