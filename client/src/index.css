@@ -191,10 +191,16 @@
   .aurora {
     animation: aurora-drift 18s ease-in-out infinite;
   }
-  /* The blurred blobs repaint every frame; hold them still while a drawer slides over the page. */
-  body:has([data-vaul-drawer]) .aurora {
-    animation-play-state: paused;
-  }
+}
+
+/* Phones run out of graphics memory when blur layers pile up behind a drawer, and each open gets
+   slower. The page is hidden by the overlay anyway, so drop the blobs and the header blur meanwhile. */
+body:has([data-vaul-drawer]) .aurora {
+  display: none;
+}
+body:has([data-vaul-drawer]) header {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 @keyframes trend-wipe {
