@@ -1,0 +1,46 @@
+{
+  "_help": "Fill in the values (or delete a field you don't care about and I will invent it). Dates are YYYY-MM-DD. Delete this _help line when done.",
+  "cars": [
+    {
+      "name": "Skoda Fabia 1.0 MPI",
+      "photosFolder": "photos/car-1",
+      "powertrain": "PETROL",
+      "hasLpg": true,
+      "purchasePrice": 29900,
+      "inspectionValidUntil": "2027-01-03",
+      "ocValidUntil": "2027-01-05",
+      "acValidUntil": null,
+      "notes": ["Zimówki w blaszaku","Kod do zestawu glosnomowiacego 2285","Butla 35l, niedługo kończy się ważność jak można wsadzić 40l."]
+    },
+    {
+      "name": "Mercedes-Benz EQS",
+      "photosFolder": "photos/car-2",
+      "powertrain": "ELECTRIC",
+      "hasLpg": false,
+      "purchasePrice": 382800,
+      "inspectionValidUntil": "2027-10-11",
+      "ocValidUntil": "2027-10-11",
+      "acValidUntil": "2027-08-15",
+      "notes": ["Ceramika 3 letnia, nałożona lato 2025", "Wymienić opony niedługo i od razu może zrobić hamulce"]
+    },
+    {
+      "name": "Jaguar F-Type",
+      "photosFolder": "photos/car-3",
+      "powertrain": "PETROL",
+      "hasLpg": false,
+      "purchasePrice": 105500,
+      "inspectionValidUntil": "2026-11-01",
+      "ocValidUntil": "2027-03-02",
+      "acValidUntil": "2027-03-02",
+      "notes": ["Rozrząd prawdopodobnie już do zrobienia, sprawdzić"]
+    }
+  ],
+  "history": {
+    "generateFakeFuelAndServices": true,
+    "fuelEntriesPerCar": 44,
+    "servicesPerCar": 9,
+    "generateFakeNotes": true,
+    "notesPerCar": 5,
+    "startDate": "2022-11-01"
+  }
+}
