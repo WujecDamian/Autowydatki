@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 // Label + input pair used by every form; extra props go to the input.
 // `error` is the message for this field; it is linked to the input for screen readers.
 export const Field = ({ id, label, className, error, ...props }) => (
-  <div className={cn("grid gap-2", className)}>
+  <div className={cn("grid min-w-0 gap-2", className)}>
     <Label htmlFor={id}>{label}</Label>
     <Input
       id={id}
