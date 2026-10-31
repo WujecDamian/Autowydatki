@@ -63,7 +63,8 @@ export const Login = () => {
       <section className="grid gap-6 rounded-3xl border bg-card/80 p-5 backdrop-blur">
         {googleEnabled ? (
           <div className="grid gap-4">
-            <div className="flex justify-center">
+            {/* The GIS iframe is light-scheme; inside our dark-scheme page the browser paints it an opaque white. */}
+            <div className="flex justify-center [color-scheme:light]">
               <GoogleLogin
                 onSuccess={onGoogleSuccess}
                 onError={() => setGoogleFailed(true)}
