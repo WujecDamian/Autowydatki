@@ -2,6 +2,8 @@
 
 Aplikacja webowa do liczenia kosztów utrzymania auta: tankowania, spalanie, serwisy, terminy OC/przeglądu i zdjęcia. Projekt full-stack napisany samodzielnie, wdrożony produkcyjnie.
 
+![Autowydatki demo](docs/demo.gif)
+
 **Demo:** logowanie `admin@autowydatki.pl` / `autowydatki` (konto publiczne, dane testowe) lub przez Google.
 
 ## Co potrafi
