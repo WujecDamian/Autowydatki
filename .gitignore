@@ -156,3 +156,6 @@ server/src/generated/
 
 # Local photo uploads (used when Supabase Storage is not configured)
 server/uploads/
+
+# Playwright MCP session logs
+.playwright-mcp/
